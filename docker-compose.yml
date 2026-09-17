@@ -1,0 +1,59 @@
+# E-Voting OSIS SMAN 21 — aplikasi + MySQL.
+#
+#   cp .env.example .env      # lalu isi semua nilai yang kosong
+#   docker compose up -d --build
+#
+# Aplikasi: http://<IP-server>:${APP_PORT} (default 8021). MySQL tidak dibuka ke host.
+
+name: evoting-osis
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: evoting
+      MYSQL_USER: evoting
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Isi DB_PASSWORD di file .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Isi DB_ROOT_PASSWORD di file .env}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - evoting-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  app:
+    build: .
+    image: evoting-osis:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8021}:4000"
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: mysql://evoting:${DB_PASSWORD}@db:3306/evoting
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Isi JWT_ACCESS_SECRET di file .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Isi JWT_REFRESH_SECRET di file .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      SEED_ON_START: ${SEED_ON_START:-true}
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin.osis}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?Isi SEED_ADMIN_PASSWORD di file .env}
+      SEED_STUDENT_PASSWORD: ${SEED_STUDENT_PASSWORD:?Isi SEED_STUDENT_PASSWORD di file .env}
+      SEED_DEMO_VOTES: ${SEED_DEMO_VOTES:-false}
+    volumes:
+      - evoting-uploads:/app/server/uploads
+
+volumes:
+  evoting-db:
+  evoting-uploads:

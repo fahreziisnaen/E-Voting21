@@ -1,0 +1,12 @@
+# Hanya untuk pengembangan lokal (`npm run dev` di host): buka MySQL ke localhost dan
+# siapkan database test + hak akses shadow database untuk `prisma migrate dev`.
+#
+#   npm run db:up
+#   (= docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db)
+
+services:
+  db:
+    ports:
+      - "127.0.0.1:${DB_PORT:-3306}:3306"
+    volumes:
+      - ./server/prisma/docker-init.sql:/docker-entrypoint-initdb.d/01-dev.sql:ro

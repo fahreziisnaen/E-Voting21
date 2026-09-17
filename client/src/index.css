@@ -1,0 +1,169 @@
+@import 'tailwindcss';
+
+/* Design tokens — sumber: design_handoff_evoting_osis/README.md */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-navy: #0f1f38;
+  --color-navy-hover: #152a4a;
+  --color-navy-active: #1c3457;
+  --color-navy-soft: #172c4a;
+  --color-navy-line: #2a4468;
+  --color-royal: #0b5cab;
+  --color-royal-hover: #1769aa;
+  --color-royal-soft: #eaf2fb;
+  --color-gold: #f4c20d;
+  --color-gold-bright: #ffc107;
+  /* Lebih gelap dari #B08600 agar label kecil lolos kontras 4.5:1 di atas putih. */
+  --color-gold-ink: #946f00;
+  --color-gold-pale: #ffe79a;
+  --color-crimson: #e31e24;
+
+  --color-canvas: #f5f8fc;
+  --color-line: #e4ecf6;
+  --color-line-strong: #d8e2ef;
+  --color-line-soft: #eef3f9;
+
+  --color-ink: #16233b;
+  --color-ink-body: #475569;
+  --color-ink-muted: #64748b;
+  --color-ink-subtle: #94a3b8;
+  --color-on-navy: #c7d6ea;
+  --color-on-navy-muted: #8fa6c6;
+  --color-on-navy-soft: #9fb3d1;
+  --color-on-navy-bright: #e6edf7;
+
+  --color-success: #16a34a;
+  --color-success-ink: #15803d;
+  --color-success-bg: #ecfdf3;
+  --color-success-line: #a7f3c4;
+  --color-warning: #f59e0b;
+  --color-warning-ink: #b45309;
+  --color-warning-bg: #fffbeb;
+  --color-warning-line: #fde68a;
+  --color-danger: #dc2626;
+  --color-danger-ink: #991b1b;
+  --color-danger-bg: #fef2f2;
+  --color-danger-line: #fcd5d5;
+
+  --radius-button: 9px;
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-panel: 16px;
+  --radius-modal: 18px;
+
+  --shadow-card-hover: 0 14px 30px rgba(15, 31, 56, 0.12);
+  --shadow-toast: 0 14px 34px rgba(15, 31, 56, 0.3);
+  --shadow-float: 0 8px 24px rgba(15, 31, 56, 0.12);
+
+  --animate-fade-up: fade-up 0.5s ease both;
+  --animate-pop: pop 0.3s ease both;
+  --animate-pop-out: pop-out 0.18s ease both;
+  --animate-veil: veil 0.2s ease both;
+  --animate-veil-out: veil-out 0.18s ease both;
+  --animate-ring: ring 0.4s ease both;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: translateY(18px) scale(0.97); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes pop-out {
+    from { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translateY(10px) scale(0.98); }
+  }
+  @keyframes veil {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes veil-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes ring {
+    from { opacity: 0; transform: scale(0.7); }
+    to { opacity: 1; transform: scale(1); }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-royal);
+    outline-offset: 2px;
+  }
+  /* Di atas latar navy, cincin fokus biru tidak terlihat — pakai emas. */
+  [data-surface='navy'] :focus-visible {
+    outline-color: var(--color-gold);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Placeholder bergaris untuk foto yang belum diunggah. */
+@utility bg-stripes {
+  background-image: repeating-linear-gradient(135deg, #eef3f9 0 10px, #e5edf6 10px 20px);
+}
+@utility bg-stripes-navy {
+  background-image: repeating-linear-gradient(135deg, #1e3557 0 14px, #223c61 14px 28px);
+}
+
+@utility eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-control px-4 text-sm font-bold transition duration-150 disabled:cursor-not-allowed disabled:opacity-60;
+}
+@utility btn-primary {
+  @apply bg-navy text-white hover:bg-navy-hover disabled:hover:bg-navy;
+}
+@utility btn-outline {
+  @apply border border-line-strong bg-white text-ink hover:border-ink-subtle;
+}
+@utility btn-danger {
+  @apply bg-danger text-white hover:brightness-95;
+}
+
+@utility field-label {
+  @apply mb-2 block text-[13px] font-bold text-ink;
+}
+@utility field-input {
+  @apply h-12 w-full rounded-control border border-line-strong bg-white px-3.5 text-[15px] text-ink outline-none transition placeholder:text-ink-subtle focus:border-royal focus:ring-3 focus:ring-royal/15 aria-invalid:border-danger;
+}
+@utility field-error {
+  @apply mt-1.5 text-[13px] font-semibold text-danger-ink;
+}

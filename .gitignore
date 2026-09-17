@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+
+# Rahasia & konfigurasi lokal
+.env
+.env.*
+!.env.example
+
+# Hasil generate / data runtime
+server/src/generated/
+server/uploads/
+
+*.log
+.DS_Store
+Thumbs.db

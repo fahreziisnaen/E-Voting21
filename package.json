@@ -1,0 +1,28 @@
+{
+  "name": "evoting-osis-sman21",
+  "private": true,
+  "description": "E-Voting Pemilihan Ketua OSIS SMAN 21 Kota Surabaya",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c blue,yellow \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w server && npm run build -w client",
+    "start": "npm run start -w server",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
+    "test": "npm run test -w server && npm run test -w client",
+    "db:up": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db",
+    "db:migrate": "npm run db:migrate -w server",
+    "db:deploy": "npm run db:deploy -w server",
+    "db:seed": "npm run db:seed -w server",
+    "db:reset": "npm run db:reset -w server",
+    "setup": "npm run db:deploy && npm run db:seed"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

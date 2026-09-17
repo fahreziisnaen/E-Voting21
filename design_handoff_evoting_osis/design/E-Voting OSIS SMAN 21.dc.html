@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F5F8FC; font-family: "Plus Jakarta Sans", system-ui, sans-serif; color: #16233B; -webkit-font-smoothing: antialiased; }
+  a { color: #0B5CAB; text-decoration: none; }
+  a:hover { color: #152A4A; }
+  button { font-family: inherit; cursor: pointer; }
+  input { font-family: inherit; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes pop { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+  @keyframes veil { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes ring { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+</style>
+</helmet>
+
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+<div style="min-height: 100vh; display: grid; grid-template-columns: 1.05fr 1fr; background: #FFFFFF">
+  <div style="position: relative; overflow: hidden; background: #0F1F38; padding: 56px 56px 44px; display: flex; flex-direction: column; justify-content: space-between; color: #FFFFFF">
+    <div style="position: absolute; top: -70px; left: -90px; width: 260px; height: 260px; transform: rotate(38deg); background: #E31E24; opacity: .85"></div>
+    <div style="position: absolute; top: 40px; left: -140px; width: 260px; height: 60px; transform: rotate(38deg); background: #F4C20D"></div>
+    <div style="position: absolute; right: -120px; bottom: -120px; width: 380px; height: 380px; border-radius: 50%; border: 1px solid rgba(244,194,13,.25)"></div>
+    <div style="position: relative; display: flex; align-items: center; gap: 14px">
+      <img src="assets/logo-sman21.png" alt="Logo SMAN 21 Kota Surabaya" style="height: 58px; width: auto" />
+      <div style="line-height: 1.1">
+        <div style="font-size: 20px; font-weight: 800; letter-spacing: .01em">SMAN 21</div>
+        <div style="font-size: 12px; font-weight: 500; color: #9FB3D1; letter-spacing: .08em; text-transform: uppercase">Kota Surabaya</div>
+      </div>
+    </div>
+    <div style="position: relative; max-width: 460px; margin: 48px 0">
+      <div style="display: inline-block; padding: 6px 12px; border: 1px solid rgba(244,194,13,.4); border-radius: 999px; color: #F4C20D; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase">Pemilihan Ketua OSIS 2025</div>
+      <h1 style="margin: 22px 0 0; font-size: 46px; line-height: 1.05; font-weight: 800; letter-spacing: -.02em">E-Voting OSIS</h1>
+      <p style="margin: 14px 0 0; font-size: 17px; line-height: 1.6; color: #C7D6EA; text-wrap: pretty">Pemilihan Ketua OSIS SMAN 21 Kota Surabaya. Satu siswa, satu suara, tercatat aman.</p>
+      <div style="margin-top: 30px; height: 3px; width: 72px; background: #F4C20D"></div>
+      <p style="margin: 22px 0 0; font-size: 15px; font-weight: 600; color: #FFFFFF; font-style: italic">“Suaramu Menentukan Masa Depan Sekolah”</p>
+    </div>
+    <div style="position: relative; display: flex; gap: 28px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #8FA6C6">
+      <span>Berkarakter</span><span>Berprestasi</span><span>Berwawasan Global</span>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; justify-content: center; padding: 48px 40px">
+    <div style="width: 100%; max-width: 396px; animation: fadeUp .5s ease both">
+      <h2 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -.01em">Masuk sebagai siswa</h2>
+      <p style="margin: 10px 0 30px; font-size: 15px; color: #64748B; line-height: 1.55">Gunakan NIS dan kode akses yang dibagikan panitia OSIS.</p>
+
+      <label for="nis" style="display: block; font-size: 13px; font-weight: 700; color: #16233B; margin-bottom: 8px">NIS / Username</label>
+      <input id="nis" type="text" value="0021453" style="width: 100%; height: 48px; padding: 0 14px; border: 1px solid #D8E2EF; border-radius: 10px; font-size: 15px; color: #16233B; background: #FFFFFF; outline: none" style-focus="border-color: #0B5CAB; box-shadow: 0 0 0 3px rgba(11,92,171,.14)" />
+
+      <label for="pw" style="display: block; font-size: 13px; font-weight: 700; color: #16233B; margin: 20px 0 8px">Kode Akses</label>
+      <input id="pw" type="password" value="osis2025" style="width: 100%; height: 48px; padding: 0 14px; border: 1px solid #D8E2EF; border-radius: 10px; font-size: 15px; color: #16233B; background: #FFFFFF; outline: none" style-focus="border-color: #0B5CAB; box-shadow: 0 0 0 3px rgba(11,92,171,.14)" />
+
+      <button type="button" onClick="{{ login }}" style="margin-top: 26px; width: 100%; height: 50px; border: 0; border-radius: 10px; background: #0F1F38; color: #FFFFFF; font-size: 15px; font-weight: 700; letter-spacing: .01em; transition: background .18s ease, transform .18s ease" style-hover="background: #152A4A; transform: translateY(-1px)" style-active="transform: none">Masuk</button>
+
+      <div style="margin-top: 22px; display: flex; gap: 12px; padding: 14px 16px; background: #F5F8FC; border: 1px solid #E4ECF6; border-radius: 10px">
+        <div style="flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; background: #0B5CAB; color: #FFFFFF; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center">i</div>
+        <p style="margin: 0; font-size: 13px; line-height: 1.55; color: #475569">Setiap siswa hanya dapat memberikan <strong style="color: #16233B">satu suara</strong>. Pilihan yang sudah dikonfirmasi tidak dapat diubah.</p>
+      </div>
+
+      <div style="margin-top: 26px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #94A3B8">
+        <span>Butuh bantuan? Hubungi panitia.</span>
+        <button type="button" onClick="{{ goAdmin }}" style="border: 0; background: none; padding: 0; font-size: 13px; font-weight: 700; color: #0B5CAB">Masuk sebagai panitia</button>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDash }}" hint-placeholder-val="{{ false }}">
+<div style="min-height: 100vh; display: flex; flex-direction: column">
+  <header style="background: #FFFFFF; border-bottom: 1px solid #E4ECF6; position: sticky; top: 0; z-index: 20">
+    <div style="max-width: 1380px; margin: 0 auto; padding: 0 28px; height: 76px; display: flex; align-items: center; gap: 36px">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <img src="assets/logo-sman21.png" alt="Logo SMAN 21 Kota Surabaya" style="height: 48px; width: auto" />
+        <div style="line-height: 1.15">
+          <div style="font-size: 19px; font-weight: 800; letter-spacing: -.01em; color: #0F1F38">SMAN 21</div>
+          <div style="font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #64748B">Kota Surabaya</div>
+        </div>
+      </div>
+      <nav style="display: flex; align-items: center; gap: 6px; margin-left: 20px">
+        <a href="#beranda" style="padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 700; color: #0F1F38; border-bottom: 3px solid #F4C20D">Beranda</a>
+        <a href="#kandidat" style="padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; color: #64748B; border-bottom: 3px solid transparent; transition: color .15s ease" style-hover="color: #0F1F38">Kandidat</a>
+        <a href="#tatacara" style="padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; color: #64748B; border-bottom: 3px solid transparent; transition: color .15s ease" style-hover="color: #0F1F38">Tata Cara Voting</a>
+      </nav>
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 12px; padding: 7px 14px 7px 8px; border: 1px solid #E4ECF6; border-radius: 999px; background: #FFFFFF">
+        <div style="width: 34px; height: 34px; border-radius: 50%; background: #0F1F38; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800">AS</div>
+        <div style="line-height: 1.2">
+          <div style="font-size: 13px; font-weight: 700">Ahmad Setiawan</div>
+          <div style="font-size: 11px; color: #64748B">XII IPA 2 · NIS 0021453</div>
+        </div>
+        <button type="button" onClick="{{ logout }}" title="Keluar" style="border: 0; background: none; padding: 4px; color: #94A3B8; font-size: 13px; font-weight: 700" style-hover="color: #DC2626">Keluar</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="beranda" data-screen-label="Hero" style="position: relative; overflow: hidden; background: #0F1F38; color: #FFFFFF">
+    <div style="position: absolute; inset: 0; left: 52%; background-image: repeating-linear-gradient(135deg, #1E3557 0 14px, #223C61 14px 28px)"></div>
+    <div style="position: absolute; inset: 0; left: 52%; background: linear-gradient(90deg, #0F1F38 0%, rgba(15,31,56,.55) 38%, rgba(15,31,56,.25) 100%)"></div>
+    <div style="position: absolute; top: 48%; left: 74%; transform: translate(-50%,-50%); font-family: ui-monospace, monospace; font-size: 12px; letter-spacing: .1em; color: rgba(255,255,255,.62); border: 1px dashed rgba(255,255,255,.35); padding: 8px 14px; border-radius: 6px">foto gedung sekolah</div>
+    <div style="position: absolute; top: -40px; left: -60px; width: 200px; height: 200px; transform: rotate(38deg); background: #E31E24; opacity: .9"></div>
+    <div style="position: absolute; top: 120px; left: -130px; width: 240px; height: 46px; transform: rotate(38deg); background: #F4C20D"></div>
+    <div style="position: relative; max-width: 1380px; margin: 0 auto; padding: 44px 28px; display: flex; align-items: center; gap: 36px">
+      <img src="assets/logo-sman21.png" alt="Logo SMAN 21 Kota Surabaya" style="height: 172px; width: auto; flex: 0 0 auto; filter: drop-shadow(0 10px 24px rgba(0,0,0,.35))" />
+      <div style="width: 3px; align-self: stretch; background: #F4C20D; flex: 0 0 auto"></div>
+      <div style="animation: fadeUp .5s ease both">
+        <div style="font-size: 22px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #E6EDF7">Pemilihan Ketua OSIS</div>
+        <div style="margin-top: 4px; font-size: 62px; line-height: .98; font-weight: 800; letter-spacing: -.02em; color: #F4C20D">SMAN 21</div>
+        <div style="margin-top: 2px; font-size: 34px; line-height: 1.05; font-weight: 800; letter-spacing: .02em">KOTA SURABAYA</div>
+        <div style="margin-top: 18px; display: inline-block; padding-bottom: 8px; border-bottom: 3px solid #F4C20D; font-size: 19px; font-weight: 600; font-style: italic; color: #FFE79A">Suaramu Menentukan Masa Depan Sekolah</div>
+      </div>
+    </div>
+  </section>
+
+  <main style="flex: 1; max-width: 1380px; width: 100%; margin: 0 auto; padding: 28px; display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: 24px; align-items: start">
+    <section id="kandidat" data-screen-label="Daftar Kandidat" style="background: #FFFFFF; border: 1px solid #E4ECF6; border-radius: 16px; padding: 26px">
+      <h2 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.01em">Daftar Kandidat Ketua OSIS</h2>
+      <p style="margin: 8px 0 24px; font-size: 14px; color: #64748B; line-height: 1.55">Kenali visi, misi, dan program kerja dari setiap kandidat.</p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 18px">
+        <article style="position: relative; border: 1px solid #E4ECF6; border-radius: 14px; overflow: hidden; background: #FFFFFF; display: flex; flex-direction: column; transition: transform .18s ease, box-shadow .18s ease" style-hover="transform: translateY(-3px); box-shadow: 0 14px 30px rgba(15,31,56,.12)">
+          <div style="position: relative; aspect-ratio: 4/5; background-image: repeating-linear-gradient(135deg, #EEF3F9 0 10px, #E5EDF6 10px 20px); display: flex; align-items: center; justify-content: center">
+            <span style="font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; color: #8FA0B6">foto kandidat</span>
+            <div style="position: absolute; top: 12px; left: 12px; width: 40px; height: 40px; border-radius: 50%; background: #E31E24; color: #FFFFFF; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(227,30,36,.35)">1</div>
+          </div>
+          <div style="padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 10px; flex: 1">
+            <div>
+              <h3 style="margin: 0; font-size: 17px; font-weight: 800; text-align: center">Andi Pratama</h3>
+              <p style="margin: 4px 0 0; font-size: 13px; color: #64748B; text-align: center">XII IPA 1</p>
+            </div>
+            <div style="border-top: 1px solid #EEF3F9; padding-top: 10px">
+              <div style="font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #E31E24; margin-bottom: 6px">Visi</div>
+              <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #475569; text-wrap: pretty">“Mewujudkan OSIS yang aktif, kreatif, dan berintegritas untuk SMAN 21 yang lebih baik.”</p>
+            </div>
+            <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px">
+              <button type="button" onClick="{{ detail1 }}" style="height: 40px; border: 1px solid #D8E2EF; border-radius: 9px; background: #FFFFFF; color: #16233B; font-size: 13px; font-weight: 700; transition: border-color .15s ease, color .15s ease" style-hover="border-color: #0B5CAB; color: #0B5CAB">Lihat Detail</button>
+              <button type="button" onClick="{{ pick1 }}" style="height: 42px; border: 0; border-radius: 9px; background: #E31E24; color: #FFFFFF; font-size: 13px; font-weight: 700; transition: filter .15s ease" style-hover="filter: brightness(.93)">Pilih Kandidat</button>
+            </div>
+          </div>
+        </article>
+
+        <article style="position: relative; border: 1px solid #E4ECF6; border-radius: 14px; overflow: hidden; background: #FFFFFF; display: flex; flex-direction: column; transition: transform .18s ease, box-shadow .18s ease" style-hover="transform: translateY(-3px); box-shadow: 0 14px 30px rgba(15,31,56,.12)">
+          <div style="position: relative; aspect-ratio: 4/5; background-image: repeating-linear-gradient(135deg, #EEF3F9 0 10px, #E5EDF6 10px 20px); display: flex; align-items: center; justify-content: center">
+            <span style="font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; color: #8FA0B6">foto kandidat</span>
+            <div style="position: absolute; top: 12px; left: 12px; width: 40px; height: 40px; border-radius: 50%; background: #F4C20D; color: #16233B; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(244,194,13,.4)">2</div>
+          </div>
+          <div style="padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 10px; flex: 1">
+            <div>
+              <h3 style="margin: 0; font-size: 17px; font-weight: 800; text-align: center">Siti Nurhaliza</h3>
+              <p style="margin: 4px 0 0; font-size: 13px; color: #64748B; text-align: center">XII IPS 2</p>
+            </div>
+            <div style="border-top: 1px solid #EEF3F9; padding-top: 10px">
+              <div style="font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #B08600; margin-bottom: 6px">Visi</div>
+              <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #475569; text-wrap: pretty">“Bersama kita wujudkan OSIS yang peduli, inovatif, dan berprestasi.”</p>
+            </div>
+            <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px">
+              <button type="button" onClick="{{ detail2 }}" style="height: 40px; border: 1px solid #D8E2EF; border-radius: 9px; background: #FFFFFF; color: #16233B; font-size: 13px; font-weight: 700; transition: border-color .15s ease, color .15s ease" style-hover="border-color: #0B5CAB; color: #0B5CAB">Lihat Detail</button>
+              <button type="button" onClick="{{ pick2 }}" style="height: 42px; border: 0; border-radius: 9px; background: #F4C20D; color: #16233B; font-size: 13px; font-weight: 700; transition: filter .15s ease" style-hover="filter: brightness(.95)">Pilih Kandidat</button>
+            </div>
+          </div>
+        </article>
+
+        <article style="position: relative; border: 1px solid #E4ECF6; border-radius: 14px; overflow: hidden; background: #FFFFFF; display: flex; flex-direction: column; transition: transform .18s ease, box-shadow .18s ease" style-hover="transform: translateY(-3px); box-shadow: 0 14px 30px rgba(15,31,56,.12)">
+          <div style="position: relative; aspect-ratio: 4/5; background-image: repeating-linear-gradient(135deg, #EEF3F9 0 10px, #E5EDF6 10px 20px); display: flex; align-items: center; justify-content: center">
+            <span style="font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; color: #8FA0B6">foto kandidat</span>
+            <div style="position: absolute; top: 12px; left: 12px; width: 40px; height: 40px; border-radius: 50%; background: #0B5CAB; color: #FFFFFF; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(11,92,171,.35)">3</div>
+          </div>
+          <div style="padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 10px; flex: 1">
+            <div>
+              <h3 style="margin: 0; font-size: 17px; font-weight: 800; text-align: center">Rizky Ramadhan</h3>
+              <p style="margin: 4px 0 0; font-size: 13px; color: #64748B; text-align: center">XII IPA 3</p>
+            </div>
+            <div style="border-top: 1px solid #EEF3F9; padding-top: 10px">
+              <div style="font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #0B5CAB; margin-bottom: 6px">Visi</div>
+              <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #475569; text-wrap: pretty">“OSIS yang solid, responsif, dan menjadi wadah aspirasi seluruh siswa.”</p>
+            </div>
+            <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px">
+              <button type="button" onClick="{{ detail3 }}" style="height: 40px; border: 1px solid #D8E2EF; border-radius: 9px; background: #FFFFFF; color: #16233B; font-size: 13px; font-weight: 700; transition: border-color .15s ease, color .15s ease" style-hover="border-color: #0B5CAB; color: #0B5CAB">Lihat Detail</button>
+              <button type="button" onClick="{{ pick3 }}" style="height: 42px; border: 0; border-radius: 9px; background: #0B5CAB; color: #FFFFFF; font-size: 13px; font-weight: 700; transition: filter .15s ease" style-hover="filter: brightness(.93)">Pilih Kandidat</button>
+            </div>
+          </div>
+        </article>
+
+        <article style="position: relative; border: 1px solid #E4ECF6; border-radius: 14px; overflow: hidden; background: #FFFFFF; display: flex; flex-direction: column; transition: transform .18s ease, box-shadow .18s ease" style-hover="transform: translateY(-3px); box-shadow: 0 14px 30px rgba(15,31,56,.12)">
+          <div style="position: relative; aspect-ratio: 4/5; background-image: repeating-linear-gradient(135deg, #EEF3F9 0 10px, #E5EDF6 10px 20px); display: flex; align-items: center; justify-content: center">
+            <span style="font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; color: #8FA0B6">foto kandidat</span>
+            <div style="position: absolute; top: 12px; left: 12px; width: 40px; height: 40px; border-radius: 50%; background: #0F1F38; color: #FFFFFF; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(15,31,56,.35)">4</div>
+          </div>
+          <div style="padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 10px; flex: 1">
+            <div>
+              <h3 style="margin: 0; font-size: 17px; font-weight: 800; text-align: center">Nadya Putri</h3>
+              <p style="margin: 4px 0 0; font-size: 13px; color: #64748B; text-align: center">XII IPS 1</p>
+            </div>
+            <div style="border-top: 1px solid #EEF3F9; padding-top: 10px">
+              <div style="font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #0F1F38; margin-bottom: 6px">Visi</div>
+              <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #475569; text-wrap: pretty">“Kolaborasi, inovasi, dan aksi nyata untuk SMAN 21 yang lebih baik.”</p>
+            </div>
+            <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px">
+              <button type="button" onClick="{{ detail4 }}" style="height: 40px; border: 1px solid #D8E2EF; border-radius: 9px; background: #FFFFFF; color: #16233B; font-size: 13px; font-weight: 700; transition: border-color .15s ease, color .15s ease" style-hover="border-color: #0B5CAB; color: #0B5CAB">Lihat Detail</button>
+              <button type="button" onClick="{{ pick4 }}" style="height: 42px; border: 0; border-radius: 9px; background: #0F1F38; color: #FFFFFF; font-size: 13px; font-weight: 700; transition: filter .15s ease" style-hover="filter: brightness(1.25)">Pilih Kandidat</button>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <aside style="display: flex; flex-direction: column; gap: 16px">
+      <div style="background: #FFFFFF; border: 1px solid #E4ECF6; border-radius: 14px; padding: 18px">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px">
+          <div style="width: 34px; height: 34px; border-radius: 9px; background: #EAF2FB; color: #0B5CAB; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800">17</div>
+          <h3 style="margin: 0; font-size: 15px; font-weight: 800">Jadwal Pemungutan Suara</h3>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px">
+          <div style="display: flex; justify-content: space-between; gap: 10px"><span style="color: #64748B">Tanggal</span><strong>12 – 14 September 2025</strong></div>
+          <div style="display: flex; justify-content: space-between; gap: 10px"><span style="color: #64748B">Waktu</span><strong>07:00 – 15:00 WIB</strong></div>
+        </div>
+      </div>
+
+      <div style="background: #FFFFFF; border: 1px solid #E4ECF6; border-radius: 14px; padding: 18px">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px">
+          <h3 style="margin: 0; font-size: 15px; font-weight: 800">Status Voting</h3>
+          <span style="margin-left: auto; padding: 4px 10px; border-radius: 999px; background: #ECFDF3; color: #15803D; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase">Aktif</span>
+        </div>
+        <p style="margin: 0; font-size: 15px; font-weight: 700; color: {{ statusColor }}">{{ statusText }}</p>
+        <p style="margin: 6px 0 0; font-size: 13px; color: #64748B; line-height: 1.5">{{ statusHint }}</p>
+      </div>
+
+      <div id="tatacara" style="background: #FFFFFF; border: 1px solid #E4ECF6; border-radius: 14px; padding: 18px">
+        <h3 style="margin: 0 0 14px; font-size: 15px; font-weight: 800">Tata Cara Voting</h3>
+        <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px">
+          <li style="display: flex; gap: 10px; align-items: flex-start"><span style="flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: #0F1F38; color: #FFFFFF; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center">1</span><span style="font-size: 13px; line-height: 1.5; color: #475569">Login menggunakan akun siswa.</span></li>
+          <li style="display: flex; gap: 10px; align-items: flex-start"><span style="flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: #0F1F38; color: #FFFFFF; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center">2</span><span style="font-size: 13px; line-height: 1.5; color: #475569">Pilih salah satu kandidat.</span></li>
+          <li style="display: flex; gap: 10px; align-items: flex-start"><span style="flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: #0F1F38; color: #FFFFFF; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center">3</span><span style="font-size: 13px; line-height: 1.5; color: #475569">Periksa kembali pilihan Anda.</span></li>
+          <li style="display: flex; gap: 10px; align-items: flex-start"><span style="flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: #0F1F38; color: #FFFFFF; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center">4</span><span style="font-size: 13px; line-height: 1.5; color: #475569">Konfirmasi suara.</span></li>
+          <li style="display: flex; gap: 10px; align-items: flex-start"><span style="flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: #16A34A; color: #FFFFFF; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center">5</span><span style="font-size: 13px; line-height: 1.5; color: #475569">Selesai.</span></li>
+        </ol>
+      </div>
+
+      <div style="background: #FEF2F2; border: 1px solid #FCD5D5; border-radius: 14px; padding: 16px; display: flex; gap: 12px">
+        <div style="flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; background: #DC2626; color: #FFFFFF; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center">!</div>
+        <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #991B1B; font-weight: 600">Setiap siswa hanya dapat memilih satu kali. Pastikan pilihan Anda sudah benar sebelum konfirmasi.</p>
+      </div>
+    </aside>
+  </main>
+
+  <footer style="position: relative; overflow: hidden; background: #0F1F38; color: #C7D6EA; margin-top: 12px">
+    <div style="position: absolute; right: -40px; bottom: -60px; width: 180px; height: 180px; transform: rotate(38deg); background: #E31E24; opacity: .8"></div>
+    <div style="position: absolute; right: 90px; bottom: -70px; width: 180px; height: 40px; transform: rotate(38deg); background: #F4C20D"></div>
+    <div style="position: relative; max-width: 1380px; margin: 0 auto; padding: 26px 28px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <img src="assets/logo-sman21.png" alt="Logo SMAN 21 Kota Surabaya" style="height: 42px; width: auto" />
+        <div style="line-height: 1.15; color: #FFFFFF">
+          <div style="font-size: 16px; font-weight: 800">SMAN 21</div>
+          <div style="font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #8FA6C6">Kota Surabaya</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 18px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; margin: 0 auto">
+        <span>Berkarakter</span><span>·</span><span>Berprestasi</span><span>·</span><span>Berwawasan Global</span>
+      </div>
+      <div style="font-size: 12px; color: #8FA6C6">© 2025 SMAN 21 Kota Surabaya</div>
+    </div>
+  </footer>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSuccess }}" hint-placeholder-val="{{ false }}">
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 48px 24px; background: #F5F8FC">
+  <div style="width: 100%; max-width: 520px; background: #FFFFFF; border: 1px solid #E4ECF6; border-radius: 18px; padding: 44px 36px; text-align: center; animation: pop .35s ease both">
+    <div style="width: 92px; height: 92px; margin: 0 auto; border-radius: 50%; background: #ECFDF3; border: 2px solid #A7F3C4; display: flex; align-items: center; justify-content: center; animation: ring .4s ease both">
+      <div style="width: 58px; height: 58px; border-radius: 50%; background: #16A34A; color: #FFFFFF; font-size: 30px; font-weight: 800; display: flex; align-items: center; justify-content: center">✓</div>
+    </div>
+    <h1 style="margin: 24px 0 0; font-size: 28px; font-weight: 800; letter-spacing: -.01em">Suara Anda Berhasil Direkam!</h1>
+    <p style="margin: 12px 0 0; font-size: 15px; line-height: 1.6; color: #64748B; text-wrap: pretty">Terima kasih telah berpartisipasi dalam Pemilihan Ketua OSIS SMAN 21 Kota Surabaya.</p>
+    <div style="margin: 28px 0 0; padding: 16px; background: #F5F8FC; border: 1px solid #E4ECF6; border-radius: 12px; display: grid; gap: 10px; text-align: left; font-size: 14px">
+      <div style="display: flex; justify-content: space-between; gap: 12px"><span style="color: #64748B">Waktu voting</span><strong>{{ voteTime }}</strong></div>
+      <div style="display: flex; justify-content: space-between; gap: 12px"><span style="color: #64748B">ID suara</span><strong style="font-family: ui-monospace, monospace">{{ voteId }}</strong></div>
+      <div style="display: flex; justify-content: space-between; gap: 12px"><span style="color: #64748B">Status</span><strong style="color: #15803D">Tercatat &amp; terverifikasi</strong></div>
+    </div>
+    <p style="margin: 18px 0 0; font-size: 13px; color: #94A3B8; line-height: 1.5">Pilihan Anda bersifat rahasia. Hasil pemilihan diumumkan panitia setelah masa pemungutan suara ditutup.</p>
+    <div style="margin-top: 28px; display: flex; gap: 10px">
+      <button type="button" onClick="{{ backHome }}" style="flex: 1; height: 46px; border: 0; border-radius: 10px; background: #0F1F38; color: #FFFFFF; font-size: 14px; font-weight: 700; transition: background .18s ease" style-hover="background: #152A4A">Kembali ke Beranda</button>
+      <button type="button" onClick="{{ logout }}" style="flex: 1; height: 46px; border: 1px solid #D8E2EF; border-radius: 10px; background: #FFFFFF; color: #16233B; font-size: 14px; font-weight: 700; transition: border-color .15s ease" style-hover="border-color: #94A3B8">Logout</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+<div style="min-height: 100vh; display: grid; grid-template-columns: 252px minmax(0,1fr); background: #F5F8FC">
+  <aside style="background: #0F1F38; color: #C7D6EA; padding: 24px 18px; display: flex; flex-direction: column; gap: 26px">
+    <div style="display: flex; align-items: center; gap: 11px">
+      <img src="assets/logo-sman21.png" alt="Logo SMAN 21 Kota Surabaya" style="height: 42px; width: auto" />
+      <div style="line-height: 1.15; color: #FFFFFF">
+        <div style="font-size: 15px; font-weight: 800">Panel Panitia</div>
+        <div style="font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #8FA6C6">SMAN 21</div>
+      </div>
+    </div>
+    <nav style="display: flex; flex-direction: column; gap: 4px">
+      <a href="#overview" style="padding: 11px 13px; border-radius: 9px; background: #1C3457; color: #FFFFFF; font-size: 14px; font-weight: 700">Dashboard Overview</a>
+      <a href="#monitoring" style="padding: 11px 13px; border-radius: 9px; color: #C7D6EA; font-size: 14px; font-weight: 600; transition: background .15s ease" style-hover="background: #172C4A; color: #FFFFFF">Monitoring Voting</a>
+      <a href="#kandidat-admin" style="padding: 11px 13px; border-radius: 9px; color: #C7D6EA; font-size: 14px; font-weight: 600; transition: background .15s ease" style-hover="background: #172C4A; color: #FFFFFF">Data Kandidat</a>
+      <a href="#siswa" style="padding: 11px 13px; border-radius: 9px; color: #C7D6EA; font-size: 14px; font-weight: 600; transition: background .15s ease" style-hover="background: #172C4A; color: #FFFFFF">Data Siswa</a>
+      <a href="#jadwal" style="padding: 11px 13px; border-radius: 9px; color: #C7D6EA; font-size: 14px; font-weight: 600; transition: background .15s ease" style-hover="background: #172C4A; color: #FFFFFF">Jadwal Voting</a>
+      <a href="#hasil" style="padding: 11px 13px; border-radius: 9px; color: #C7D6EA; font-size: 14px; font-weight: 600; transition: background .15s ease" style-hover="background: #172C4A; color: #FFFFFF">Hasil Voting</a>
+      <a href="#audit" style="padding: 11px 13px; border-radius: 9px; color: #C7D6EA; font-size: 14px; font-weight: 600; transition: background .15s ease" style-hover="background: #172C4A; color: #FFFFFF">Audit Log</a>
+      <a href="#pengaturan" style="padding: 11px 13px; border-radius: 9px; color: #C7D6EA; font-size: 14px; font-weight: 600; transition: background .15s ease" style-hover="background: #172C4A; color: #FFFFFF">Pengaturan Sistem</a>
+    </nav>
+    <button type="button" onClick="{{ logout }}" style="margin-top: auto; height: 42px; border: 1px solid #2A4468; border-radius: 9px; background: none; color: #C7D6EA; font-size: 13px; font-weight: 700" style-hover="border-color: #F4C20D; color: #F4C20D">Keluar</button>
+  </aside>
+
+  <div style="padding: 28px 32px 40px; display: flex; flex-direction: column; gap: 22px">
+    <header id="overview" style="display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap">
+      <div>
+        <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.01em">Dashboard Overview</h1>
+        <p style="margin: 6px 0 0; font-size: 14px; color: #64748B">Pemilihan Ketua OSIS 2025 · 12 – 14 September 2025</p>
+      </div>
+      <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: #ECFDF3; color: #15803D; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase">Pemungutan suara berlangsung</span>
+    </header>
+
+    <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px">
+      <div style="background: #FFFFFF; border: 1px solid #E4ECF6; border-radius: 14px; padding: 18px">
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #64748B">Total Siswa Terdaftar</div>
+        <div style="margin-top: 10px; font-size: 32px; font-weight: 800; letter-spacing: -.02em">1.248</div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #E4ECF6; border-radius: 14px; padding: 18px; border-top: 3px solid #16A34A">
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #64748B">Sudah Voting</div>
+        <div style="margin-top: 10px; font-size: 32px; font-weight: 800; letter-spacing: -.02em; color: #15803D">{{ votedCount }}</div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #E4ECF6; border-radius: 14px; padding: 18px; border-top: 3px solid #F59E0B">
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #64748B">Belum Voting</div>
+        <div style="margin-top: 10px; font-size: 32px; font-weight: 800; letter-spacing: -.02em; color: #B45309">{{ notVotedCount }}</div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #E4ECF6; border-radius: 14px; padding: 18px; border-top: 3px solid #0B5CAB">
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #64748B">Partisipasi</div>
+        <div style="margin-top: 10px; font-size: 32px; font-weight: 800; letter-spacing: -.02em; color: #0B5CAB">{{ turnout }}</div>
+        <div style="margin-top: 12px; height: 8px; border-radius: 99px; background: #EEF3F9; overflow: hidden">
+          <div style="height: 100%; border-radius: 99px; background: #0B5CAB; width: {{ turnout }}"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="monitoring" style="display: grid; grid-template-columns: minmax(0,1.35fr) minmax(0,1fr); gap: 18px; align-items: start">
+      <div style="background: #FFFFFF; border: 1px solid #E4ECF6; border-radius: 16px; padding: 22px">
+        <h2 style="margin: 0; font-size: 17px; font-weight: 800">Perolehan Suara per Kandidat</h2>
+        <p style="margin: 6px 0 22px; font-size: 13px; color: #64748B">Angka bersifat internal panitia dan belum dipublikasikan ke siswa.</p>
+        <div style="display: flex; flex-direction: column; gap: 16px">
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 7px"><span>1 · Andi Pratama</span><span style="color: #64748B">312 suara · 34,2%</span></div>
+            <div style="height: 12px; border-radius: 99px; background: #F1F5F9; overflow: hidden"><div style="height: 100%; width: 34.2%; background: #E31E24; border-radius: 99px"></div></div>
+          </div>
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 7px"><span>2 · Siti Nurhaliza</span><span style="color: #64748B">271 suara · 29,7%</span></div>
+            <div style="height: 12px; border-radius: 99px; background: #F1F5F9; overflow: hidden"><div style="height: 100%; width: 29.7%; background: #F4C20D; border-radius: 99px"></div></div>
+          </div>
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 7px"><span>3 · Rizky Ramadhan</span><span style="color: #64748B">198 suara · 21,7%</span></div>
+            <div style="height: 12px; border-radius: 99px; background: #F1F5F9; overflow: hidden"><div style="height: 100%; width: 21.7%; background: #0B5CAB; border-radius: 99px"></div></div>
+          </div>
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 7px"><span>4 · Nadya Putri</span><span style="color: #64748B">131 suara · 14,4%</span></div>
+            <div style="height: 12px; border-radius: 99px; background: #F1F5F9; overflow: hidden"><div style="height: 100%; width: 14.4%; background: #0F1F38; border-radius: 99px"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: #FFFFFF; border: 1px solid #E4ECF6; border-radius: 16px; padding: 22px">
+        <h2 style="margin: 0; font-size: 17px; font-weight: 800">Partisipasi per Jam</h2>
+        <p style="margin: 6px 0 22px; font-size: 13px; color: #64748B">Hari ini, 14 September 2025</p>
+        <div style="display: flex; align-items: flex-end; gap: 10px; height: 168px; padding-bottom: 24px; border-bottom: 1px solid #EEF3F9">
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; height: 100%"><div style="width: 100%; height: 34%; background: #0B5CAB; border-radius: 6px 6px 0 0"></div><span style="font-size: 11px; color: #64748B; font-weight: 600">07</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; height: 100%"><div style="width: 100%; height: 62%; background: #0B5CAB; border-radius: 6px 6px 0 0"></div><span style="font-size: 11px; color: #64748B; font-weight: 600">08</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; height: 100%"><div style="width: 100%; height: 88%; background: #0B5CAB; border-radius: 6px 6px 0 0"></div><span style="font-size: 11px; color: #64748B; font-weight: 600">09</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; height: 100%"><div style="width: 100%; height: 71%; background: #0B5CAB; border-radius: 6px 6px 0 0"></div><span style="font-size: 11px; color: #64748B; font-weight: 600">10</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; height: 100%"><div style="width: 100%; height: 46%; background: #0B5CAB; border-radius: 6px 6px 0 0"></div><span style="font-size: 11px; color: #64748B; font-weight: 600">11</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; height: 100%"><div style="width: 100%; height: 28%; background: #94A3B8; border-radius: 6px 6px 0 0"></div><span style="font-size: 11px; color: #64748B; font-weight: 600">12</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; height: 100%"><div style="width: 100%; height: 55%; background: #0B5CAB; border-radius: 6px 6px 0 0"></div><span style="font-size: 11px; color: #64748B; font-weight: 600">13</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; height: 100%"><div style="width: 100%; height: 40%; background: #0B5CAB; border-radius: 6px 6px 0 0"></div><span style="font-size: 11px; color: #64748B; font-weight: 600">14</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="audit" style="background: #FFFFFF; border: 1px solid #E4ECF6; border-radius: 16px; padding: 22px">
+      <h2 style="margin: 0 0 16px; font-size: 17px; font-weight: 800">Audit Log Terbaru</h2>
+      <div style="display: grid; grid-template-columns: 150px minmax(0,1fr) 130px 120px; gap: 12px; padding: 0 0 10px; border-bottom: 1px solid #EEF3F9; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #94A3B8">
+        <span>Waktu</span><span>Aksi</span><span>Aktor</span><span>Status</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 150px minmax(0,1fr) 130px 120px; gap: 12px; padding: 13px 0; border-bottom: 1px solid #F5F8FC; font-size: 13px; align-items: center">
+        <span style="color: #64748B; font-family: ui-monospace, monospace">10:42:08</span><span>Vote tersimpan (transaksi commit)</span><span style="color: #64748B">NIS 0021453</span><span style="color: #15803D; font-weight: 700">Sukses</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 150px minmax(0,1fr) 130px 120px; gap: 12px; padding: 13px 0; border-bottom: 1px solid #F5F8FC; font-size: 13px; align-items: center">
+        <span style="color: #64748B; font-family: ui-monospace, monospace">10:41:55</span><span>Percobaan voting kedua ditolak</span><span style="color: #64748B">NIS 0021390</span><span style="color: #B45309; font-weight: 700">Ditolak</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 150px minmax(0,1fr) 130px 120px; gap: 12px; padding: 13px 0; border-bottom: 1px solid #F5F8FC; font-size: 13px; align-items: center">
+        <span style="color: #64748B; font-family: ui-monospace, monospace">10:39:12</span><span>Login siswa</span><span style="color: #64748B">NIS 0021411</span><span style="color: #15803D; font-weight: 700">Sukses</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 150px minmax(0,1fr) 130px 120px; gap: 12px; padding: 13px 0; font-size: 13px; align-items: center">
+        <span style="color: #64748B; font-family: ui-monospace, monospace">10:30:00</span><span>Jadwal voting diperbarui</span><span style="color: #64748B">admin.osis</span><span style="color: #15803D; font-weight: 700">Sukses</span>
+      </div>
+    </section>
+
+    <button type="button" onClick="{{ backHome }}" style="align-self: flex-start; height: 42px; padding: 0 18px; border: 1px solid #D8E2EF; border-radius: 10px; background: #FFFFFF; font-size: 13px; font-weight: 700; color: #16233B" style-hover="border-color: #0B5CAB; color: #0B5CAB">Lihat tampilan siswa</button>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ showDetail }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeDetail }}" style="position: fixed; inset: 0; z-index: 60; background: rgba(15,31,56,.55); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; padding: 28px; animation: veil .2s ease both">
+  <div onClick="{{ stop }}" style="width: 100%; max-width: 860px; max-height: 90vh; overflow: auto; background: #FFFFFF; border-radius: 18px; animation: pop .28s ease both">
+    <div style="display: grid; grid-template-columns: 300px minmax(0,1fr); gap: 0">
+      <div style="position: relative; background-image: repeating-linear-gradient(135deg, #EEF3F9 0 10px, #E5EDF6 10px 20px); min-height: 380px; display: flex; align-items: center; justify-content: center; border-radius: 18px 0 0 18px">
+        <span style="font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; color: #8FA0B6">foto kandidat</span>
+        <div style="position: absolute; top: 16px; left: 16px; width: 46px; height: 46px; border-radius: 50%; background: {{ selColor }}; color: {{ selNumColor }}; font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center">{{ selNumber }}</div>
+      </div>
+      <div style="padding: 28px 30px 30px">
+        <div style="display: flex; align-items: flex-start; gap: 16px">
+          <div>
+            <h2 style="margin: 0; font-size: 25px; font-weight: 800; letter-spacing: -.01em">{{ selName }}</h2>
+            <p style="margin: 6px 0 0; font-size: 14px; color: #64748B">Kandidat No. {{ selNumber }} · {{ selClass }}</p>
+          </div>
+          <button type="button" onClick="{{ closeDetail }}" aria-label="Tutup" style="margin-left: auto; width: 34px; height: 34px; border: 1px solid #E4ECF6; border-radius: 9px; background: #FFFFFF; color: #64748B; font-size: 15px; font-weight: 700" style-hover="border-color: #94A3B8; color: #16233B">✕</button>
+        </div>
+
+        <div style="margin-top: 22px">
+          <div style="font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #94A3B8">Visi</div>
+          <p style="margin: 8px 0 0; font-size: 15px; line-height: 1.6; color: #16233B; text-wrap: pretty">{{ selVision }}</p>
+        </div>
+
+        <div style="margin-top: 20px">
+          <div style="font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #94A3B8">Misi</div>
+          <ul style="margin: 8px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px">
+            <sc-for list="{{ selMission }}" as="m" hint-placeholder-count="3">
+              <li style="font-size: 14px; line-height: 1.55; color: #475569">{{ m }}</li>
+            </sc-for>
+          </ul>
+        </div>
+
+        <div style="margin-top: 20px">
+          <div style="font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #94A3B8">Program Kerja Unggulan</div>
+          <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px">
+            <sc-for list="{{ selPrograms }}" as="p" hint-placeholder-count="3">
+              <span style="padding: 7px 12px; border-radius: 999px; background: #F5F8FC; border: 1px solid #E4ECF6; font-size: 13px; font-weight: 600; color: #16233B">{{ p }}</span>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px">
+          <div style="font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #94A3B8">Riwayat Organisasi</div>
+          <ul style="margin: 8px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px">
+            <sc-for list="{{ selHistory }}" as="h" hint-placeholder-count="2">
+              <li style="font-size: 14px; line-height: 1.55; color: #475569">{{ h }}</li>
+            </sc-for>
+          </ul>
+        </div>
+
+        <div style="margin-top: 26px; display: flex; gap: 10px">
+          <button type="button" onClick="{{ closeDetail }}" style="height: 46px; padding: 0 20px; border: 1px solid #D8E2EF; border-radius: 10px; background: #FFFFFF; font-size: 14px; font-weight: 700; color: #16233B" style-hover="border-color: #94A3B8">Tutup</button>
+          <button type="button" onClick="{{ pickSelected }}" style="flex: 1; height: 46px; border: 0; border-radius: 10px; background: #0F1F38; color: #FFFFFF; font-size: 14px; font-weight: 700; transition: background .18s ease" style-hover="background: #152A4A">Pilih Kandidat Ini</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ showConfirm }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeConfirm }}" style="position: fixed; inset: 0; z-index: 70; background: rgba(15,31,56,.6); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; padding: 28px; animation: veil .2s ease both">
+  <div onClick="{{ stop }}" style="width: 100%; max-width: 440px; background: #FFFFFF; border-radius: 16px; padding: 30px; text-align: center; animation: pop .26s ease both">
+    <h2 style="margin: 0; font-size: 21px; font-weight: 800">Konfirmasi Pilihan Anda</h2>
+    <p style="margin: 10px 0 20px; font-size: 14px; color: #64748B">Anda memilih:</p>
+    <div style="padding: 18px; border: 1px solid #E4ECF6; border-radius: 12px; background: #F5F8FC; display: flex; align-items: center; gap: 14px; text-align: left">
+      <div style="flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; background: {{ selColor }}; color: {{ selNumColor }}; font-size: 19px; font-weight: 800; display: flex; align-items: center; justify-content: center">{{ selNumber }}</div>
+      <div>
+        <div style="font-size: 17px; font-weight: 800">{{ selName }}</div>
+        <div style="font-size: 13px; color: #64748B">{{ selClass }}</div>
+      </div>
+    </div>
+    <div style="margin-top: 16px; padding: 13px 14px; background: #FEF2F2; border: 1px solid #FCD5D5; border-radius: 10px; font-size: 13px; font-weight: 600; color: #991B1B; line-height: 1.5">Pilihan yang sudah dikonfirmasi tidak dapat diubah.</div>
+    <div style="margin-top: 22px; display: flex; gap: 10px">
+      <button type="button" onClick="{{ closeConfirm }}" style="flex: 1; height: 46px; border: 1px solid #D8E2EF; border-radius: 10px; background: #FFFFFF; font-size: 14px; font-weight: 700; color: #16233B" style-hover="border-color: #94A3B8">Kembali</button>
+      <button type="button" onClick="{{ submitVote }}" style="flex: 1.3; height: 46px; border: 0; border-radius: 10px; background: #0F1F38; color: #FFFFFF; font-size: 14px; font-weight: 700; transition: background .18s ease" style-hover="background: #152A4A">{{ confirmLabel }}</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+<div style="position: fixed; z-index: 90; right: 24px; bottom: 24px; max-width: 330px; padding: 14px 16px; border-radius: 12px; background: #16233B; color: #FFFFFF; font-size: 13px; font-weight: 600; line-height: 1.5; box-shadow: 0 14px 34px rgba(15,31,56,.3); animation: pop .22s ease both">{{ toast }}</div>
+</sc-if>
+
+<div style="position: fixed; z-index: 80; left: 16px; bottom: 16px; display: flex; gap: 6px; padding: 7px; border-radius: 12px; background: rgba(255,255,255,.92); border: 1px solid #E4ECF6; box-shadow: 0 8px 24px rgba(15,31,56,.12); backdrop-filter: blur(6px)">
+  <span style="align-self: center; padding: 0 6px; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #94A3B8">Demo</span>
+  <button type="button" onClick="{{ goLogin }}" style="height: 30px; padding: 0 11px; border: 1px solid #E4ECF6; border-radius: 8px; background: #FFFFFF; font-size: 12px; font-weight: 700; color: #16233B" style-hover="border-color: #0B5CAB; color: #0B5CAB">Login</button>
+  <button type="button" onClick="{{ backHome }}" style="height: 30px; padding: 0 11px; border: 1px solid #E4ECF6; border-radius: 8px; background: #FFFFFF; font-size: 12px; font-weight: 700; color: #16233B" style-hover="border-color: #0B5CAB; color: #0B5CAB">Dashboard</button>
+  <button type="button" onClick="{{ goSuccess }}" style="height: 30px; padding: 0 11px; border: 1px solid #E4ECF6; border-radius: 8px; background: #FFFFFF; font-size: 12px; font-weight: 700; color: #16233B" style-hover="border-color: #0B5CAB; color: #0B5CAB">Sukses</button>
+  <button type="button" onClick="{{ goAdmin }}" style="height: 30px; padding: 0 11px; border: 1px solid #E4ECF6; border-radius: 8px; background: #FFFFFF; font-size: 12px; font-weight: 700; color: #16233B" style-hover="border-color: #0B5CAB; color: #0B5CAB">Admin</button>
+  <button type="button" onClick="{{ resetVote }}" style="height: 30px; padding: 0 11px; border: 1px solid #E4ECF6; border-radius: 8px; background: #FFFFFF; font-size: 12px; font-weight: 700; color: #64748B" style-hover="border-color: #DC2626; color: #DC2626">Reset suara</button>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;initialScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;dashboard&quot;,&quot;success&quot;,&quot;admin&quot;],&quot;default&quot;:&quot;login&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demo&quot;},&quot;startVoted&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Demo&quot;}}">
+const CANDIDATES = [
+  {
+    n: 1, name: "Andi Pratama", cls: "XII IPA 1", color: "#E31E24", numColor: "#FFFFFF",
+    vision: "“Mewujudkan OSIS yang aktif, kreatif, dan berintegritas untuk SMAN 21 yang lebih baik.”",
+    mission: ["Membuka kanal aspirasi siswa yang mudah diakses setiap kelas.", "Menghidupkan kembali ekstrakurikuler yang kurang aktif.", "Transparansi anggaran kegiatan OSIS setiap semester."],
+    programs: ["Pekan Kreativitas Siswa", "OSIS Menyapa Kelas", "Laporan Anggaran Terbuka"],
+    history: ["Ketua MPK 2024/2025", "Anggota Ekstrakurikuler Jurnalistik", "Koordinator Panitia Class Meeting 2024"]
+  },
+  {
+    n: 2, name: "Siti Nurhaliza", cls: "XII IPS 2", color: "#F4C20D", numColor: "#16233B",
+    vision: "“Bersama kita wujudkan OSIS yang peduli, inovatif, dan berprestasi.”",
+    mission: ["Program mentoring belajar antar angkatan.", "Kegiatan sosial rutin bersama warga sekitar sekolah.", "Digitalisasi administrasi dan proposal kegiatan OSIS."],
+    programs: ["Kakak Asuh Belajar", "Jumat Peduli", "Arsip Digital OSIS"],
+    history: ["Sekretaris OSIS 2024/2025", "Ketua Panitia Bakti Sosial 2024", "Anggota PMR"]
+  },
+  {
+    n: 3, name: "Rizky Ramadhan", cls: "XII IPA 3", color: "#0B5CAB", numColor: "#FFFFFF",
+    vision: "“OSIS yang solid, responsif, dan menjadi wadah aspirasi seluruh siswa.”",
+    mission: ["Rapat terbuka bulanan bersama perwakilan kelas.", "Respons aspirasi maksimal 7 hari kerja.", "Pembinaan kaderisasi pengurus OSIS baru."],
+    programs: ["Forum Kelas Bulanan", "Kotak Aspirasi Digital", "Pelatihan Kepemimpinan"],
+    history: ["Ketua Ekstrakurikuler Basket", "Wakil Ketua MPK 2023/2024", "Anggota Rohis"]
+  },
+  {
+    n: 4, name: "Nadya Putri", cls: "XII IPS 1", color: "#0F1F38", numColor: "#FFFFFF",
+    vision: "“Kolaborasi, inovasi, dan aksi nyata untuk SMAN 21 yang lebih baik.”",
+    mission: ["Kolaborasi lintas ekstrakurikuler dalam satu kalender kegiatan.", "Kampanye sekolah bersih dan bebas sampah plastik.", "Pengembangan media sosial OSIS sebagai kanal informasi resmi."],
+    programs: ["Kalender Kegiatan Terpadu", "SMAN 21 Bersih", "Media Center OSIS"],
+    history: ["Koordinator Bidang Publikasi OSIS 2024/2025", "Ketua Panitia Pentas Seni 2024", "Anggota English Club"]
+  }
+];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      screen: props.initialScreen || "login",
+      hasVoted: !!props.startVoted,
+      selected: null,
+      showDetail: false,
+      showConfirm: false,
+      submitting: false,
+      toast: "",
+      voteTime: "",
+      voteId: ""
+    };
+  }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg });
+    this._t = setTimeout(() => this.setState({ toast: "" }), 3200);
+  }
+
+  go(screen) {
+    this.setState({ screen, showDetail: false, showConfirm: false });
+  }
+
+  openDetail(n) {
+    this.setState({ selected: n, showDetail: true });
+  }
+
+  askConfirm(n) {
+    if (this.state.hasVoted) {
+      this.flash("Anda sudah memberikan suara. Setiap siswa hanya dapat memilih satu kali.");
+      return;
+    }
+    this.setState({ selected: n, showDetail: false, showConfirm: true });
+  }
+
+  submit() {
+    if (this.state.submitting) return;
+    this.setState({ submitting: true });
+    setTimeout(() => {
+      const now = new Date();
+      const pad = (v) => String(v).padStart(2, "0");
+      this.setState({
+        submitting: false,
+        showConfirm: false,
+        hasVoted: true,
+        screen: "success",
+        voteTime: pad(now.getDate()) + "/" + pad(now.getMonth() + 1) + "/" + now.getFullYear() + " · " + pad(now.getHours()) + ":" + pad(now.getMinutes()) + " WIB",
+        voteId: "VT-" + now.getFullYear() + "-" + Math.floor(100000 + Math.random() * 899999)
+      });
+    }, 700);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const sel = CANDIDATES.find((c) => c.n === s.selected) || CANDIDATES[0];
+    const voted = 912;
+    return {
+      isLogin: s.screen === "login",
+      isDash: s.screen === "dashboard",
+      isSuccess: s.screen === "success",
+      isAdmin: s.screen === "admin",
+      showDetail: s.showDetail,
+      showConfirm: s.showConfirm,
+      toast: s.toast,
+      voteTime: s.voteTime || "14/09/2025 · 10:42 WIB",
+      voteId: s.voteId || "VT-2025-480231",
+
+      statusText: s.hasVoted ? "Anda sudah memberikan suara" : "Anda belum memberikan suara",
+      statusHint: s.hasVoted ? "Terima kasih telah berpartisipasi. Pilihan tidak dapat diubah." : "Pilih salah satu kandidat sebelum masa pemungutan suara ditutup.",
+      statusColor: s.hasVoted ? "#15803D" : "#B45309",
+
+      selNumber: sel.n,
+      selName: sel.name,
+      selClass: sel.cls,
+      selColor: sel.color,
+      selNumColor: sel.numColor,
+      selVision: sel.vision,
+      selMission: sel.mission,
+      selPrograms: sel.programs,
+      selHistory: sel.history,
+      confirmLabel: s.submitting ? "Menyimpan…" : "Konfirmasi Suara",
+
+      votedCount: voted.toLocaleString("id-ID"),
+      notVotedCount: (1248 - voted).toLocaleString("id-ID"),
+      turnout: "73,1%",
+
+      login: () => this.go("dashboard"),
+      logout: () => this.go("login"),
+      goLogin: () => this.go("login"),
+      goAdmin: () => this.go("admin"),
+      goSuccess: () => this.go("success"),
+      backHome: () => this.go("dashboard"),
+      detail1: () => this.openDetail(1),
+      detail2: () => this.openDetail(2),
+      detail3: () => this.openDetail(3),
+      detail4: () => this.openDetail(4),
+      pick1: () => this.askConfirm(1),
+      pick2: () => this.askConfirm(2),
+      pick3: () => this.askConfirm(3),
+      pick4: () => this.askConfirm(4),
+      pickSelected: () => this.askConfirm(sel.n),
+      closeDetail: () => this.setState({ showDetail: false }),
+      closeConfirm: () => this.setState({ showConfirm: false }),
+      submitVote: () => this.submit(),
+      resetVote: () => { this.setState({ hasVoted: false }); this.flash("Status suara di-reset (mode demo)."); },
+      stop: (e) => e.stopPropagation()
+    };
+  }
+}
+
+</script>
+</body>
+</html>

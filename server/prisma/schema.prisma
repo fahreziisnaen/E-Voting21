@@ -1,0 +1,136 @@
+// Skema database E-Voting OSIS SMAN 21.
+// Koneksi diatur di prisma.config.ts (DATABASE_URL).
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  student
+  admin
+}
+
+enum ElectionStatus {
+  draft
+  open
+  closed
+}
+
+enum AuditStatus {
+  success
+  rejected
+  failed
+}
+
+model SchoolClass {
+  id         Int      @id @default(autoincrement())
+  /// Contoh: "XII IPA 1"
+  name       String   @unique @db.VarChar(40)
+  /// 10 / 11 / 12 (X / XI / XII); null bila tidak termasuk tingkat mana pun.
+  gradeLevel Int?     @map("grade_level")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  students User[]
+
+  @@index([gradeLevel])
+  @@map("classes")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  nis          String   @unique @db.VarChar(64)
+  name         String   @db.VarChar(120)
+  /// Wajib untuk siswa; null untuk akun panitia.
+  classId      Int?     @map("class_id")
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  role         Role     @default(student)
+  hasVoted     Boolean  @default(false) @map("has_voted")
+  /// Dinaikkan saat logout / reset kode akses untuk mencabut semua sesi aktif.
+  tokenVersion Int      @default(0) @map("token_version")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  schoolClass SchoolClass? @relation(fields: [classId], references: [id], onDelete: Restrict)
+  candidacy   Candidate?
+  vote        Vote?
+  auditLogs   AuditLog[]
+
+  @@index([role, hasVoted])
+  @@index([classId])
+  @@map("users")
+}
+
+model Candidate {
+  id                  Int      @id @default(autoincrement())
+  candidateNumber     Int      @unique @map("candidate_number")
+  /// Kandidat selalu siswa terdaftar; nama & kelas diambil dari data siswa.
+  userId              Int      @unique @map("user_id")
+  photoUrl            String?  @map("photo_url") @db.VarChar(255)
+  vision              String   @db.Text
+  /// string[]
+  mission             Json
+  /// string[]
+  programs            Json
+  /// string[] — Riwayat Organisasi
+  organizationHistory Json     @map("organization_history")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  votes Vote[]
+
+  @@map("candidates")
+}
+
+model Vote {
+  id          Int      @id @default(autoincrement())
+  /// UNIQUE: penjamin satu suara per siswa di level database.
+  userId      Int      @unique @map("user_id")
+  candidateId Int      @map("candidate_id")
+  /// Kode tanda terima yang ditampilkan ke siswa (tidak memuat pilihan).
+  receiptCode String   @unique @map("receipt_code") @db.VarChar(32)
+  votedAt     DateTime @default(now()) @map("voted_at")
+  ipAddress   String?  @map("ip_address") @db.VarChar(64)
+  userAgent   String?  @map("user_agent") @db.VarChar(255)
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Restrict)
+
+  @@index([candidateId])
+  @@index([votedAt])
+  @@map("votes")
+}
+
+model ElectionSettings {
+  id           Int            @id @default(1)
+  electionName String         @map("election_name") @db.VarChar(160)
+  startDate    DateTime       @map("start_date")
+  endDate      DateTime       @map("end_date")
+  status       ElectionStatus @default(draft)
+  heroPhotoUrl String?        @map("hero_photo_url") @db.VarChar(255)
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  @@map("election_settings")
+}
+
+model AuditLog {
+  id        Int         @id @default(autoincrement())
+  userId    Int?        @map("user_id")
+  /// NIS / username pada saat kejadian (tetap ada walau akun dihapus).
+  actor     String?     @db.VarChar(64)
+  action    String      @db.VarChar(64)
+  status    AuditStatus
+  metadata  Json?
+  timestamp DateTime    @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([timestamp])
+  @@index([action])
+  @@map("audit_logs")
+}
