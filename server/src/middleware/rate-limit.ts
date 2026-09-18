@@ -35,11 +35,11 @@ export const loginIpLimiter = rateLimit({
   handler: limited('Terlalu banyak permintaan masuk dari jaringan ini. Coba lagi beberapa menit lagi.'),
 });
 
-/** Dipasang setelah requireAuth, dihitung per akun. */
+/** Dipasang setelah requireAuth, dihitung per akun. Cukup longgar untuk memilih beberapa kategori berturut-turut. */
 export const voteLimiter = rateLimit({
   ...common,
   windowMs: 60 * 1000,
-  limit: 5,
+  limit: 20,
   keyGenerator: (req) => `user:${req.user?.id ?? clientIp(req)}`,
   handler: limited('Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.'),
 });

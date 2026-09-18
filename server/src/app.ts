@@ -10,11 +10,17 @@ import { errorHandler, notFoundApi } from './middleware/error.js';
 import { apiLimiter } from './middleware/rate-limit.js';
 import { adminRouter } from './routes/admin/index.js';
 import { authRouter } from './routes/auth.js';
-import { candidatesRouter, electionRouter, votesRouter } from './routes/public.js';
+import { candidatesRouter, categoriesRouter, electionRouter, resultsRouter, votesRouter } from './routes/public.js';
 
 z.config(z.locales.id());
 
-const IMPORT_PATH = '/api/admin/students/import';
+// Endpoint dengan muatan besar memasang parser JSON sendiri (impor pemilih & pemulihan cadangan).
+const BIG_BODY_PATHS = new Set([
+  '/api/admin/students/import',
+  '/api/admin/teachers/import',
+  '/api/admin/restore',
+  '/api/admin/restore/preview',
+]);
 
 export function createApp() {
   const app = express();
@@ -36,9 +42,9 @@ export function createApp() {
       crossOriginOpenerPolicy: env.cookieSecure ? undefined : false,
     }),
   );
-  // Batas kecil untuk semua endpoint; impor siswa punya parser sendiri (dipasang setelah cek admin).
+  // Batas kecil untuk semua endpoint; lihat BIG_BODY_PATHS (parser dipasang setelah cek admin).
   const jsonBody = express.json({ limit: '100kb' });
-  app.use((req, res, next) => (req.path === IMPORT_PATH ? next() : jsonBody(req, res, next)));
+  app.use((req, res, next) => (BIG_BODY_PATHS.has(req.path) ? next() : jsonBody(req, res, next)));
   app.use(cookieParser());
 
   app.use(
@@ -57,7 +63,9 @@ export function createApp() {
   });
   api.use('/auth', authRouter);
   api.use('/election', electionRouter);
+  api.use('/categories', categoriesRouter);
   api.use('/candidates', candidatesRouter);
+  api.use('/results', resultsRouter);
   api.use('/votes', votesRouter);
   api.use('/admin', adminRouter);
   api.use(notFoundApi);

@@ -5,14 +5,27 @@ import { CandidateBadge } from '../../components/CandidateVisuals';
 import { candidateAccent } from '../../lib/candidates';
 import { cn } from '../../lib/cn';
 import { formatNumber, formatPercent } from '../../lib/format';
-import type { CandidateResult, ResultTotals } from '../../types';
+import { VOTER_SCOPE_LABEL } from '../../lib/voting';
+import type { AdminCategoryResult, CandidateResult, ResultTotals } from '../../types';
 
 export function StatCards({ totals }: { totals: ResultTotals | undefined }) {
   const value = (n: number | undefined) => (n === undefined ? '—' : formatNumber(n));
   const cards = [
-    { label: 'Total Siswa Terdaftar', value: value(totals?.students), accent: '', ink: '' },
-    { label: 'Sudah Voting', value: value(totals?.voted), accent: 'border-t-[3px] border-t-success', ink: 'text-success-ink' },
-    { label: 'Belum Voting', value: value(totals?.notVoted), accent: 'border-t-[3px] border-t-warning', ink: 'text-warning-ink' },
+    {
+      label: 'Total Pemilih Terdaftar',
+      value: value(totals?.voters),
+      accent: '',
+      ink: '',
+      note: totals ? `${formatNumber(totals.students)} siswa · ${formatNumber(totals.teachers)} guru` : undefined,
+    },
+    {
+      label: 'Sudah Memilih',
+      value: value(totals?.participated),
+      accent: 'border-t-[3px] border-t-success',
+      ink: 'text-success-ink',
+      note: totals ? `${formatNumber(totals.totalVotes)} suara di semua kategori` : undefined,
+    },
+    { label: 'Belum Memilih', value: value(totals?.notParticipated), accent: 'border-t-[3px] border-t-warning', ink: 'text-warning-ink', note: undefined },
   ];
   return (
     <section aria-label="Ringkasan partisipasi" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
@@ -20,10 +33,12 @@ export function StatCards({ totals }: { totals: ResultTotals | undefined }) {
         <div key={card.label} className={cn('rounded-card border border-line bg-white p-[18px]', card.accent)}>
           <p className="text-xs font-bold tracking-[0.06em] text-ink-muted uppercase">{card.label}</p>
           <p className={cn('mt-2.5 text-[26px] leading-tight font-extrabold tracking-[-0.02em] sm:text-[32px]', card.ink)}>{card.value}</p>
+          {card.note && <p className="mt-1 text-xs text-ink-muted">{card.note}</p>}
         </div>
       ))}
       <div className="rounded-card border border-line border-t-[3px] border-t-royal bg-white p-[18px]">
         <p className="text-xs font-bold tracking-[0.06em] text-ink-muted uppercase">Partisipasi</p>
+        <span className="sr-only">Pemilih yang sudah memilih di minimal satu kategori.</span>
         <p className="mt-2.5 text-[26px] leading-tight font-extrabold tracking-[-0.02em] text-royal sm:text-[32px]">
           {totals ? formatPercent(totals.turnout) : '—'}
         </p>
@@ -72,6 +87,27 @@ export function VotesByCandidate({ candidates, totalVotes }: { candidates: Candi
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Perolehan suara dikelompokkan per kategori; setiap kategori punya total dan partisipasinya sendiri. */
+export function CategoryVotesList({ categories }: { categories: AdminCategoryResult[] }) {
+  if (categories.length === 0) return <p className="text-sm text-ink-muted">Belum ada kategori pemilihan.</p>;
+  return (
+    <div className="flex flex-col gap-6">
+      {categories.map((category) => (
+        <section key={category.id} aria-label={`Perolehan suara kategori ${category.name}`}>
+          <div className="mb-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-line-soft pb-2">
+            <h3 className="text-[15px] font-extrabold">{category.name}</h3>
+            <span className="rounded-full bg-canvas px-2 py-0.5 text-[11px] font-bold text-ink-body">{VOTER_SCOPE_LABEL[category.voterScope]}</span>
+            <span className="ml-auto text-[13px] text-ink-muted tabular-nums">
+              {formatNumber(category.totalVotes)} suara · {formatPercent(category.turnout)} dari {formatNumber(category.eligible)} pemilih
+            </span>
+          </div>
+          <VotesByCandidate candidates={category.candidates} totalVotes={category.totalVotes} />
+        </section>
+      ))}
+    </div>
   );
 }
 
@@ -126,7 +162,7 @@ export function HourlyParticipationChart({
               aria-pressed={view === mode}
               onClick={() => setView(mode)}
               className={cn(
-                'flex items-center gap-1 rounded-md px-2 py-1 font-semibold',
+                'flex items-center gap-1 rounded-md px-2.5 py-1.5 font-semibold',
                 view === mode ? 'bg-line-soft text-ink' : 'text-ink-muted hover:text-ink',
               )}
             >

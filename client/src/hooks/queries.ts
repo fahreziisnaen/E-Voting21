@@ -1,13 +1,15 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { api, ApiError } from '../lib/api';
-import type { Candidate, Election, MeResponse, SessionUser, VoteReceipt } from '../types';
+import type { CastVote, Category, Election, MeResponse, PublicResults, SessionUser } from '../types';
 
 export const meQuery = queryOptions({
   queryKey: ['me'],
   queryFn: async (): Promise<MeResponse | null> => {
     try {
-      return await api<MeResponse>('/auth/me');
+      // Pengunjung tanpa sesi mendapat { user: null } — beranda bersifat publik.
+      const me = await api<MeResponse | { user: null; votes: [] }>('/auth/me');
+      return me.user ? (me as MeResponse) : null;
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return null;
       throw err;
@@ -29,10 +31,20 @@ export function useElection() {
   });
 }
 
-export function useCandidates() {
+/** Kategori beserta kandidatnya — publik, tanpa login. */
+export function useCategories() {
   return useQuery({
-    queryKey: ['candidates'],
-    queryFn: async () => (await api<{ candidates: Candidate[] }>('/candidates')).candidates,
+    queryKey: ['categories'],
+    queryFn: async () => (await api<{ categories: Category[] }>('/categories')).categories,
+  });
+}
+
+/** Kandidat terpilih per kategori; kosong sampai panitia mengumumkan hasil. */
+export function usePublicResults() {
+  return useQuery({
+    queryKey: ['results'],
+    queryFn: () => api<PublicResults>('/results'),
+    refetchInterval: 60_000,
   });
 }
 
@@ -57,7 +69,7 @@ export function useLogout() {
       const wasAdmin = queryClient.getQueryData(meQuery.queryKey)?.user.role === 'admin';
       queryClient.setQueryData(meQuery.queryKey, null);
       queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'me' });
-      navigate(wasAdmin ? '/admin/login' : '/login', { replace: true });
+      navigate(wasAdmin ? '/admin/login' : '/', { replace: true });
     },
   });
 }
@@ -66,9 +78,11 @@ export function useCastVote() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (candidateId: number) =>
-      api<{ vote: VoteReceipt; message: string }>('/votes', { method: 'POST', body: { candidateId } }),
+      api<{ vote: CastVote; message: string }>('/votes', { method: 'POST', body: { candidateId } }),
     onSuccess: ({ vote }) => {
-      queryClient.setQueryData(meQuery.queryKey, (me) => (me ? { ...me, hasVoted: true, vote } : me));
+      queryClient.setQueryData(meQuery.queryKey, (me) =>
+        me ? { ...me, votes: [...me.votes.filter((v) => v.categoryId !== vote.categoryId), vote] } : me,
+      );
     },
   });
 }

@@ -37,7 +37,7 @@ export function RequireRole({ roles, children }: { roles: Role[]; children: Reac
   if (me.isPending) return <PageLoader />;
   if (me.isError) return <SessionError onRetry={() => void me.refetch()} />;
   if (!me.data) {
-    const loginPath = roles.includes('student') ? '/login' : '/admin/login';
+    const loginPath = roles.includes('admin') ? '/admin/login' : '/login';
     return <Navigate to={loginPath} replace state={{ from: location.pathname }} />;
   }
   if (!roles.includes(me.data.user.role)) {
@@ -46,10 +46,28 @@ export function RequireRole({ roles, children }: { roles: Role[]; children: Reac
   return children;
 }
 
-/** Halaman login: pengguna yang sudah masuk langsung diarahkan. */
+/** State yang dibawa ke halaman login, mis. dari tombol "Pilih Kandidat" saat belum masuk. */
+export interface LoginRedirectState {
+  from?: string;
+  pickCandidateId?: number;
+  pickCandidateName?: string;
+}
+
+/**
+ * Halaman login: pengguna yang sudah masuk (termasuk tepat setelah login berhasil) diarahkan
+ * kembali ke halaman asal. Niat memilih kandidat diteruskan agar modal konfirmasi langsung terbuka.
+ */
 export function GuestOnly({ children }: { children: ReactNode }) {
   const me = useMe();
+  const location = useLocation();
   if (me.isPending) return <PageLoader />;
-  if (me.data) return <Navigate to={me.data.user.role === 'admin' ? '/admin' : '/'} replace />;
+  if (me.data) {
+    const state = location.state as LoginRedirectState | null;
+    if (me.data.user.role === 'admin') {
+      return <Navigate to={state?.from?.startsWith('/admin') ? state.from : '/admin'} replace />;
+    }
+    const from = state?.from && !state.from.startsWith('/admin') && !state.from.startsWith('/login') ? state.from : '/';
+    return <Navigate to={from} replace state={state?.pickCandidateId ? { pickCandidateId: state.pickCandidateId } : null} />;
+  }
   return children;
 }

@@ -2,8 +2,11 @@ import {
   Activity,
   CalendarClock,
   ChartColumn,
+  DatabaseBackup,
   Contact,
   Eye,
+  GraduationCap,
+  Layers,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -23,13 +26,16 @@ import { cn } from '../../lib/cn';
 const NAV = [
   { to: '/admin', end: true, label: 'Dashboard Overview', icon: LayoutDashboard },
   { to: '/admin/monitoring', label: 'Monitoring Voting', icon: Activity },
+  { to: '/admin/kategori', label: 'Data Kategori', icon: Layers },
   { to: '/admin/kandidat', label: 'Data Kandidat', icon: Contact },
   { to: '/admin/siswa', label: 'Data Siswa', icon: Users },
+  { to: '/admin/guru', label: 'Data Guru', icon: GraduationCap },
   { to: '/admin/kelas', label: 'Data Kelas', icon: School },
   { to: '/admin/jadwal', label: 'Jadwal Voting', icon: CalendarClock },
   { to: '/admin/hasil', label: 'Hasil Voting', icon: ChartColumn },
   { to: '/admin/audit-log', label: 'Audit Log', icon: ScrollText },
   { to: '/admin/pengaturan', label: 'Pengaturan Sistem', icon: Settings },
+  { to: '/admin/cadangan', label: 'Cadangan & Reset', icon: DatabaseBackup },
 ];
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
@@ -84,7 +90,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           to="/"
           className="flex h-[42px] items-center justify-center gap-2 rounded-button border border-navy-line text-[13px] font-bold transition-colors hover:border-on-navy-muted hover:text-white"
         >
-          <Eye aria-hidden className="size-4" /> Lihat tampilan siswa
+          <Eye aria-hidden className="size-4" /> Lihat tampilan pemilih
         </Link>
         <button
           type="button"

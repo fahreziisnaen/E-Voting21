@@ -1,15 +1,16 @@
-import { Eye, EyeOff, LoaderCircle, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Info, LoaderCircle, TriangleAlert } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { Logo } from '../components/Logo';
+import type { LoginRedirectState } from '../components/RouteGuards';
 import { useElection, useLogin } from '../hooks/queries';
 import { errorMessage } from '../lib/api';
 import { wibYear } from '../lib/format';
 
 const COPY = {
   student: {
-    title: 'Masuk sebagai siswa',
-    subtitle: 'Gunakan NIS dan kode akses yang dibagikan panitia OSIS.',
+    title: 'Masuk sebagai pemilih',
+    subtitle: 'Siswa memakai NIS, guru memakai username, beserta kode akses yang dibagikan panitia.',
     idLabel: 'NIS / Username',
     secretLabel: 'Kode Akses',
     switchLabel: 'Masuk sebagai panitia',
@@ -20,7 +21,7 @@ const COPY = {
     subtitle: 'Gunakan username dan kata sandi panitia OSIS.',
     idLabel: 'Username',
     secretLabel: 'Kata Sandi',
-    switchLabel: 'Masuk sebagai siswa',
+    switchLabel: 'Masuk sebagai pemilih',
     switchTo: '/login',
   },
 } as const;
@@ -29,8 +30,8 @@ export function LoginPage({ variant }: { variant: 'student' | 'admin' }) {
   const copy = COPY[variant];
   const login = useLogin();
   const election = useElection();
-  const navigate = useNavigate();
   const location = useLocation();
+  const redirectState = location.state as LoginRedirectState | null;
 
   const [nis, setNis] = useState('');
   const [password, setPassword] = useState('');
@@ -46,10 +47,8 @@ export function LoginPage({ variant }: { variant: 'student' | 'admin' }) {
     setTouched(true);
     if (!nis.trim() || !password || login.isPending) return;
     try {
-      const { user } = await login.mutateAsync({ nis: nis.trim(), password });
-      const from = (location.state as { from?: string } | null)?.from;
-      if (user.role === 'admin') navigate(from?.startsWith('/admin') ? from : '/admin', { replace: true });
-      else navigate(from && !from.startsWith('/admin') ? from : '/', { replace: true });
+      // Pengalihan setelah berhasil (termasuk niat memilih kandidat) ditangani GuestOnly.
+      await login.mutateAsync({ nis: nis.trim(), password });
     } catch {
       setPassword('');
     }
@@ -75,13 +74,13 @@ export function LoginPage({ variant }: { variant: 'student' | 'admin' }) {
 
         <div className="relative my-8 max-w-[460px] lg:my-12">
           <p className="inline-block rounded-full border border-gold/40 px-3 py-1.5 text-xs font-bold tracking-[0.12em] text-gold uppercase">
-            Pemilihan Ketua OSIS{year ? ` ${year}` : ''}
+            {election.data?.electionName ?? `Pemilihan OSIS${year ? ` ${year}` : ''}`}
           </p>
           <h1 className="mt-5 text-[36px] leading-[1.05] font-extrabold tracking-[-0.02em] lg:mt-[22px] lg:text-[46px]">
             E-Voting OSIS
           </h1>
           <p className="mt-3.5 text-[15px] leading-relaxed text-pretty text-on-navy lg:text-[17px]">
-            Pemilihan Ketua OSIS SMAN 21 Kota Surabaya. Satu siswa, satu suara, tercatat aman.
+            Pemilihan OSIS SMAN 21 Kota Surabaya untuk siswa dan guru. Satu pemilih, satu suara di setiap kategori, tercatat aman.
           </p>
           <div aria-hidden className="mt-6 h-[3px] w-[72px] bg-gold lg:mt-[30px]" />
           <p className="mt-5 text-[15px] font-semibold italic lg:mt-[22px]">“Suaramu Menentukan Masa Depan Sekolah”</p>
@@ -96,8 +95,24 @@ export function LoginPage({ variant }: { variant: 'student' | 'admin' }) {
 
       <main className="flex items-center justify-center px-5 py-10 sm:px-10 lg:py-12">
         <div className="w-full max-w-[396px] animate-fade-up">
+          <Link
+            to={variant === 'admin' ? '/' : redirectState?.from ?? '/'}
+            className="mb-5 -ml-1 inline-flex items-center gap-1.5 rounded-lg px-1 py-2 text-[13px] font-bold text-ink-muted hover:text-navy"
+          >
+            <ArrowLeft aria-hidden className="size-4" /> Kembali ke beranda
+          </Link>
           <h2 className="text-2xl font-extrabold sm:text-[28px]">{copy.title}</h2>
           <p className="mt-2.5 mb-[30px] text-[15px] leading-normal text-ink-muted">{copy.subtitle}</p>
+
+          {variant === 'student' && redirectState?.pickCandidateName && (
+            <p className="-mt-3 mb-6 flex items-start gap-2 rounded-control border border-royal/20 bg-royal-soft px-3.5 py-3 text-[13px] leading-normal text-navy">
+              <Info aria-hidden className="mt-px size-4 shrink-0 text-royal" />
+              <span>
+                Masuk untuk memilih <strong>{redirectState.pickCandidateName}</strong>. Setelah masuk, Anda tetap diminta
+                mengonfirmasi pilihan.
+              </span>
+            </p>
+          )}
 
           <form noValidate onSubmit={handleSubmit}>
             <label htmlFor="nis" className="field-label">
@@ -178,14 +193,14 @@ export function LoginPage({ variant }: { variant: 'student' | 'admin' }) {
               i
             </span>
             <p className="text-[13px] leading-normal text-ink-body">
-              Setiap siswa hanya dapat memberikan <strong className="text-ink">satu suara</strong>. Pilihan yang sudah
-              dikonfirmasi tidak dapat diubah.
+              Setiap pemilih hanya dapat memberikan <strong className="text-ink">satu suara di setiap kategori</strong>. Pilihan
+              yang sudah dikonfirmasi tidak dapat diubah.
             </p>
           </div>
 
           <div className="mt-[26px] flex flex-wrap items-center justify-between gap-2 text-[13px] text-ink-muted">
             <span>Butuh bantuan? Hubungi panitia.</span>
-            <Link to={copy.switchTo} className="font-bold text-royal hover:text-navy-hover">
+            <Link to={copy.switchTo} className="-my-1 rounded-lg py-2 font-bold text-royal hover:text-navy-hover">
               {copy.switchLabel}
             </Link>
           </div>

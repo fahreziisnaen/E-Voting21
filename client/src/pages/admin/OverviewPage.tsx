@@ -2,7 +2,7 @@ import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router';
 import { AdminPageHeader, ErrorNotice, Panel } from '../../features/admin/AdminUi';
 import { AuditLogTable } from '../../features/admin/AuditLogTable';
-import { HourlyParticipationChart, StatCards, visibleHours, VotesByCandidate } from '../../features/admin/Charts';
+import { CategoryVotesList, HourlyParticipationChart, StatCards, visibleHours } from '../../features/admin/Charts';
 import { useAuditLogs, useStats } from '../../hooks/admin';
 import { useElection } from '../../hooks/queries';
 import { errorMessage } from '../../lib/api';
@@ -24,12 +24,12 @@ export default function OverviewPage() {
 
       <div className="grid items-start gap-[18px] xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <Panel
-          title="Perolehan Suara per Kandidat"
+          title="Perolehan Suara per Kategori"
           titleId="overview-perolehan"
-          description="Angka bersifat internal panitia dan belum dipublikasikan ke siswa."
+          description="Angka bersifat internal panitia dan belum dipublikasikan ke pemilih."
         >
           {stats.data ? (
-            <VotesByCandidate candidates={stats.data.perCandidate} totalVotes={stats.data.totals.totalVotes} />
+            <CategoryVotesList categories={stats.data.categories} />
           ) : (
             <div aria-hidden className="h-40 animate-pulse rounded-card bg-line-soft" />
           )}
@@ -55,7 +55,7 @@ export default function OverviewPage() {
         title="Audit Log Terbaru"
         titleId="overview-audit"
         actions={
-          <Link to="/admin/audit-log" className="inline-flex items-center gap-1 text-[13px] font-bold text-royal hover:text-navy-hover">
+          <Link to="/admin/audit-log" className="inline-flex items-center gap-1 py-1.5 text-[13px] font-bold text-royal hover:text-navy-hover">
             Lihat semua <ArrowRight aria-hidden className="size-3.5" />
           </Link>
         }

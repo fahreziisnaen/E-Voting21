@@ -2,6 +2,7 @@ import { LoaderCircle, TriangleAlert, X } from 'lucide-react';
 import { useRef, type RefObject } from 'react';
 import { CandidateBadge, CandidatePhoto } from '../../components/CandidateVisuals';
 import { Modal } from '../../components/Modal';
+import { personMeta } from '../../lib/voting';
 import type { Candidate } from '../../types';
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -39,11 +40,12 @@ export function CandidateDetailModal({ candidate, open, onClose, onPick, returnF
         <div className="p-6 md:px-[30px] md:pt-7 md:pb-[30px]">
           <div className="flex items-start gap-4">
             <div className="min-w-0">
+              <p className="eyebrow text-royal">{candidate.categoryName}</p>
               <h2 id="detail-kandidat-judul" className="text-[22px] font-extrabold sm:text-[25px]">
                 {candidate.name}
               </h2>
               <p className="mt-1.5 text-sm text-ink-muted">
-                Kandidat No. {candidate.candidateNumber} · {candidate.className}
+                Kandidat No. {candidate.candidateNumber} · {personMeta(candidate)}
               </p>
             </div>
             <button
@@ -92,11 +94,12 @@ export function CandidateDetailModal({ candidate, open, onClose, onPick, returnF
             </DetailSection>
           )}
 
-          <div className="mt-[26px] flex flex-col-reverse gap-2.5 sm:flex-row">
+          {/* Di ponsel tombol menempel di bawah agar tetap terjangkau tanpa menggulir seluruh profil. */}
+          <div className="sticky bottom-0 z-10 -mx-6 -mb-6 mt-6 flex flex-col-reverse gap-2.5 border-t border-line bg-white px-6 py-4 sm:static sm:m-0 sm:mt-[26px] sm:flex-row sm:border-0 sm:p-0">
             <button type="button" onClick={onClose} className="btn btn-outline h-[46px] px-5">
               Tutup
             </button>
-            <button type="button" onClick={() => onPick(candidate)} className="btn btn-primary h-[46px] flex-1">
+            <button type="button" onClick={() => onPick(candidate)} className="btn btn-primary h-[46px] sm:flex-1">
               Pilih Kandidat Ini
             </button>
           </div>
@@ -108,6 +111,7 @@ export function CandidateDetailModal({ candidate, open, onClose, onPick, returnF
 
 interface ConfirmVoteModalProps {
   candidate: Candidate | undefined;
+  categoryName: string | undefined;
   open: boolean;
   submitting: boolean;
   onCancel: () => void;
@@ -115,7 +119,15 @@ interface ConfirmVoteModalProps {
   returnFocusRef: RefObject<HTMLElement | null>;
 }
 
-export function ConfirmVoteModal({ candidate, open, submitting, onCancel, onConfirm, returnFocusRef }: ConfirmVoteModalProps) {
+export function ConfirmVoteModal({
+  candidate,
+  categoryName,
+  open,
+  submitting,
+  onCancel,
+  onConfirm,
+  returnFocusRef,
+}: ConfirmVoteModalProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   if (!candidate) return null;
   return (
@@ -133,12 +145,14 @@ export function ConfirmVoteModal({ candidate, open, submitting, onCancel, onConf
       <h2 id="konfirmasi-judul" className="text-[21px] font-extrabold">
         Konfirmasi Pilihan Anda
       </h2>
-      <p className="mt-2.5 mb-5 text-sm text-ink-muted">Anda memilih:</p>
+      <p className="mt-2.5 mb-5 text-sm text-ink-muted">
+        Kategori <strong className="text-ink">{categoryName}</strong> — Anda memilih:
+      </p>
       <div className="flex items-center gap-3.5 rounded-xl border border-line bg-canvas p-[18px] text-left">
         <CandidateBadge number={candidate.candidateNumber} size="lg" className="shadow-none" />
         <div className="min-w-0">
           <p className="text-[17px] font-extrabold">{candidate.name}</p>
-          <p className="text-[13px] text-ink-muted">{candidate.className}</p>
+          <p className="text-[13px] text-ink-muted">{personMeta(candidate)}</p>
         </div>
       </div>
       <p
@@ -146,7 +160,7 @@ export function ConfirmVoteModal({ candidate, open, submitting, onCancel, onConf
         className="mt-4 flex items-center justify-center gap-2 rounded-control border border-danger-line bg-danger-bg px-3.5 py-[13px] text-[13px] leading-normal font-semibold text-danger-ink"
       >
         <TriangleAlert aria-hidden className="size-4 shrink-0" />
-        Pilihan yang sudah dikonfirmasi tidak dapat diubah.
+        Pilihan di kategori ini tidak dapat diubah setelah dikonfirmasi.
       </p>
       <div className="mt-[22px] flex flex-col-reverse gap-2.5 sm:flex-row">
         <button ref={cancelRef} type="button" onClick={onCancel} disabled={submitting} className="btn btn-outline h-[46px] sm:flex-1">

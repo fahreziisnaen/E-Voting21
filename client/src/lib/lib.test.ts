@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseCsv, parseStudentRows } from './csv';
+import { parseCsv, parseVoterRows } from './csv';
 import { detectGradeLevel } from './grade';
 import { formatDateRange, formatDateTime, formatPercent, formatTimeRange, joinWib, splitWib } from './format';
 
@@ -47,7 +47,7 @@ describe('CSV impor siswa', () => {
         '0021501;Budi Lagi;X-1;',
       ].join('\n'),
     );
-    const { rows, errors } = parseStudentRows(table);
+    const { rows, errors } = parseVoterRows(table);
     expect(rows).toHaveLength(2);
     expect(rows[0]).toEqual({ nis: '0021501', name: 'Budi Santoso', className: 'XII IPA 1', password: 'rahasia1', generatedCode: false });
     expect(rows[1]).toMatchObject({ nis: '0021504', className: 'XI IPS 2', generatedCode: true });
@@ -60,7 +60,7 @@ describe('CSV impor siswa', () => {
   });
 
   it('menerima sel dari Excel (angka, null) dan kolom kode akses opsional', () => {
-    const { rows, errors } = parseStudentRows([
+    const { rows, errors } = parseVoterRows([
       ['NIS', 'Nama Siswa', 'Rombel'],
       [null, null, null],
       [21453, 'Ahmad', 'XII IPA 2'],
@@ -70,7 +70,20 @@ describe('CSV impor siswa', () => {
   });
 
   it('menolak berkas tanpa kolom wajib', () => {
-    expect(parseStudentRows(parseCsv('nis,nama\n1,a')).errors[0]).toMatch(/kelas/);
+    expect(parseVoterRows(parseCsv('nis,nama\n1,a')).errors[0]).toMatch(/kelas/);
+  });
+
+  it('impor guru memakai kolom username dan tidak memerlukan kelas', () => {
+    const { rows, errors } = parseVoterRows(parseCsv('username,nama,kode_akses\nguru.dewi,Dewi Lestari,\nx,Salah,\n'), {
+      withClass: false,
+    });
+    expect(errors).toEqual(['Baris 3: Username "x" tidak valid.']);
+    expect(rows[0]).toMatchObject({ nis: 'guru.dewi', name: 'Dewi Lestari', className: '', generatedCode: true });
+  });
+
+  it('kolom nip ditolak agar nomor rahasia tidak ikut diimpor', () => {
+    const { errors } = parseVoterRows(parseCsv('nip,nama\n198501012010011001,Dewi'), { withClass: false });
+    expect(errors[0]).toMatch(/username/);
   });
 
   it('mengenali tingkat kelas dari nama', () => {

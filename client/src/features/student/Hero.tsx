@@ -1,6 +1,19 @@
+import { ArrowRight, LogIn } from 'lucide-react';
+import { Link } from 'react-router';
 import { Logo } from '../../components/Logo';
+import type { LoginRedirectState } from '../../components/RouteGuards';
 
-export function Hero({ photoUrl }: { photoUrl: string | null }) {
+const LOGIN_STATE: LoginRedirectState = { from: '/' };
+
+interface HeroProps {
+  /** Nama pemilihan dari Jadwal Voting (mis. "Pemilihan Raya 2026"). */
+  title: string | undefined;
+  categoryNames: string[];
+  photoUrl: string | null;
+  isGuest: boolean;
+}
+
+export function Hero({ title, categoryNames, photoUrl, isGuest }: HeroProps) {
   return (
     <section
       id="beranda"
@@ -39,7 +52,7 @@ export function Hero({ photoUrl }: { photoUrl: string | null }) {
         <div className="min-w-0 animate-fade-up">
           <h1 id="judul-pemilihan">
             <span className="block text-[13px] font-bold tracking-[0.14em] text-on-navy-bright uppercase sm:text-lg lg:text-[22px]">
-              Pemilihan Ketua OSIS
+              {title ?? 'Pemilihan'}
             </span>
             <span className="mt-1 block text-[40px] leading-[0.98] font-extrabold tracking-[-0.02em] text-gold sm:text-[52px] lg:text-[62px]">
               SMAN 21
@@ -51,6 +64,26 @@ export function Hero({ photoUrl }: { photoUrl: string | null }) {
           <p className="mt-4 inline-block border-b-[3px] border-gold pb-2 text-sm font-semibold text-gold-pale italic sm:mt-[18px] sm:text-[17px] lg:text-[19px]">
             Suaramu Menentukan Masa Depan Sekolah
           </p>
+          {categoryNames.length > 1 && (
+            <p className="mt-3 text-[13px] font-semibold text-on-navy sm:text-sm">
+              <span className="sr-only">Kategori: </span>
+              {categoryNames.join(' · ')}
+            </p>
+          )}
+          <div className="mt-6 flex flex-wrap gap-2.5 sm:gap-3">
+            {isGuest && (
+              <Link
+                to="/login"
+                state={LOGIN_STATE}
+                className="btn h-11 bg-gold px-5 text-ink hover:bg-gold-bright"
+              >
+                <LogIn aria-hidden className="size-4" /> Masuk untuk Memilih
+              </Link>
+            )}
+            <Link to="/kandidat" className="btn h-11 border border-white/40 px-5 text-white hover:bg-white/10">
+              Lihat Kandidat <ArrowRight aria-hidden className="size-4" />
+            </Link>
+          </div>
         </div>
       </div>
     </section>

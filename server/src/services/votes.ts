@@ -4,7 +4,8 @@ import { isUniqueViolation, prisma } from '../lib/prisma.js';
 import { wibYear } from '../lib/time.js';
 import type { SessionUser } from '../middleware/auth.js';
 import { AUDIT, recordAudit } from './audit.js';
-import { computeElectionPhase, getElectionSettings, PHASE_REJECTION_MESSAGE } from './election.js';
+import { canVoteInCategory, VOTER_SCOPE_LABEL } from './categories.js';
+import { computeElectionPhase, getElectionSettings, PHASE_REJECTION_MESSAGE, resetCompletionCache } from './election.js';
 
 const RECEIPT_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -14,10 +15,9 @@ export function generateReceiptCode(now: Date = new Date()): string {
   return `VT-${wibYear(now)}-${suffix}`;
 }
 
-export const ALREADY_VOTED_MESSAGE =
-  'Anda sudah memberikan suara. Setiap siswa hanya dapat memilih satu kali.';
-
-class AlreadyVotedError extends Error {}
+export function alreadyVotedMessage(categoryName: string): string {
+  return `Anda sudah memberikan suara untuk kategori ${categoryName}. Setiap pemilih hanya dapat memilih satu kali per kategori.`;
+}
 
 interface CastVoteInput {
   user: SessionUser;
@@ -37,8 +37,9 @@ async function reject(user: SessionUser, reason: string, extra: Record<string, u
 }
 
 /**
- * Urutan: jadwal aktif (server) → transaksi [klaim has_voted secara atomik, insert vote,
- * audit log]. `votes.user_id` UNIQUE menjadi pengaman terakhir terhadap race condition.
+ * Urutan: jadwal aktif (server) → kandidat & hak memilih di kategorinya → transaksi
+ * [insert vote + audit log]. UNIQUE(user_id, category_id) menjamin satu suara per kategori,
+ * termasuk saat ada request paralel.
  */
 export async function castVote({ user, candidateId, ipAddress, userAgent }: CastVoteInput) {
   const settings = await getElectionSettings();
@@ -48,31 +49,39 @@ export async function castVote({ user, candidateId, ipAddress, userAgent }: Cast
     throw new HttpError(403, PHASE_REJECTION_MESSAGE[phase], 'VOTING_NOT_OPEN');
   }
 
+  const candidate = await prisma.candidate.findUnique({
+    where: { id: candidateId },
+    select: { id: true, category: { select: { id: true, name: true, voterScope: true } } },
+  });
+  if (!candidate) {
+    await reject(user, 'invalid_candidate', { candidateId });
+    throw new HttpError(404, 'Kandidat tidak ditemukan. Muat ulang halaman lalu pilih kembali.', 'CANDIDATE_NOT_FOUND');
+  }
+  const { category } = candidate;
+  const categoryMeta = { categoryId: category.id, category: category.name };
+
+  if (!canVoteInCategory(user.role, category.voterScope)) {
+    await reject(user, 'not_eligible', categoryMeta);
+    throw new HttpError(
+      403,
+      `Kategori ${category.name} hanya dapat dipilih oleh ${VOTER_SCOPE_LABEL[category.voterScope]}.`,
+      'NOT_ELIGIBLE',
+    );
+  }
+
   try {
-    return await prisma.$transaction(async (tx) => {
-      const candidate = await tx.candidate.findUnique({ where: { id: candidateId }, select: { id: true } });
-      if (!candidate) {
-        throw new HttpError(404, 'Kandidat tidak ditemukan. Muat ulang halaman lalu pilih kembali.', 'CANDIDATE_NOT_FOUND');
-      }
-
-      // UPDATE ... WHERE has_voted = false mengunci baris; transaksi paralel akan mendapat count = 0.
-      const claimed = await tx.user.updateMany({
-        where: { id: user.id, role: 'student', hasVoted: false },
-        data: { hasVoted: true },
-      });
-      if (claimed.count !== 1) throw new AlreadyVotedError();
-
-      const vote = await tx.vote.create({
+    const vote = await prisma.$transaction(async (tx) => {
+      const created = await tx.vote.create({
         data: {
           userId: user.id,
-          candidateId,
+          categoryId: category.id,
+          candidateId: candidate.id,
           receiptCode: generateReceiptCode(),
           ipAddress: ipAddress?.slice(0, 64),
           userAgent: userAgent?.slice(0, 255),
         },
-        select: { receiptCode: true, votedAt: true },
+        select: { receiptCode: true, votedAt: true, categoryId: true },
       });
-
       // Metadata sengaja TIDAK memuat kandidat pilihan (kerahasiaan suara).
       await recordAudit(
         {
@@ -80,26 +89,26 @@ export async function castVote({ user, candidateId, ipAddress, userAgent }: Cast
           status: 'success',
           userId: user.id,
           actor: user.nis,
-          metadata: { receiptCode: vote.receiptCode },
+          metadata: { receiptCode: created.receiptCode, ...categoryMeta },
         },
         tx,
       );
-      return vote;
+      return created;
     });
+    // Suara baru bisa melengkapi partisipasi seluruh pemilih → hitung ulang status pengumuman hasil.
+    resetCompletionCache();
+    return { ...vote, categoryName: category.name };
   } catch (err) {
-    if (err instanceof HttpError && err.code === 'CANDIDATE_NOT_FOUND') {
-      await reject(user, 'invalid_candidate', { candidateId });
-      throw err;
+    if (!isUniqueViolation(err)) throw err;
+    const existing = await prisma.vote.findUnique({
+      where: { userId_categoryId: { userId: user.id, categoryId: category.id } },
+      select: { id: true },
+    });
+    if (existing) {
+      await reject(user, 'already_voted', categoryMeta);
+      throw new HttpError(409, alreadyVotedMessage(category.name), 'ALREADY_VOTED');
     }
-    if (err instanceof AlreadyVotedError || isUniqueViolation(err)) {
-      const existing = await prisma.vote.findUnique({ where: { userId: user.id }, select: { id: true } });
-      if (existing || err instanceof AlreadyVotedError) {
-        await reject(user, 'already_voted');
-        throw new HttpError(409, ALREADY_VOTED_MESSAGE, 'ALREADY_VOTED');
-      }
-      // Tabrakan kode tanda terima (sangat jarang) — aman untuk dicoba lagi.
-      throw new HttpError(409, 'Suara belum tersimpan karena gangguan sesaat. Silakan coba lagi.', 'VOTE_RETRY');
-    }
-    throw err;
+    // Tabrakan kode tanda terima (sangat jarang) — aman untuk dicoba lagi.
+    throw new HttpError(409, 'Suara belum tersimpan karena gangguan sesaat. Silakan coba lagi.', 'VOTE_RETRY');
   }
 }

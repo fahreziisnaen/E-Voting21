@@ -40,19 +40,34 @@ adminReportsRouter.get('/results/export.csv', async (req, res) => {
   const now = new Date();
   const { totals } = results;
 
-  const csv = toCsv([
+  const VOTER_SCOPE = { all: 'Siswa & guru', student: 'Siswa', teacher: 'Guru' } as const;
+  const rows: Array<Array<string | number>> = [
     [settings.electionName],
     ['Diekspor pada', formatWib(now)],
     ['Status pemungutan suara', PHASE_LABEL[computeElectionPhase(settings, now)]],
+    ['Hasil diumumkan', settings.resultsPublishedAt ? formatWib(settings.resultsPublishedAt) : 'Belum'],
+    ['Semua pemilih sudah memilih', totals.completed ? 'Ya' : 'Belum'],
     [],
-    ['No. Urut', 'Nama Kandidat', 'Kelas', 'Jumlah Suara', 'Persentase (%)'],
-    ...results.perCandidate.map((c) => [c.candidateNumber, c.name, c.className, c.votes, c.percentage]),
-    [],
-    ['Total suara masuk', totals.totalVotes],
-    ['Total siswa terdaftar', totals.students],
-    ['Belum memilih', totals.notVoted],
+    ['Total pemilih terdaftar', totals.voters],
+    ['Siswa', totals.students],
+    ['Guru', totals.teachers],
+    ['Sudah memilih (min. 1 kategori)', totals.participated],
     ['Partisipasi (%)', totals.turnout],
-  ]);
+  ];
+  for (const category of results.categories) {
+    const winners = category.candidates.filter((c) => category.winnerIds.includes(c.id));
+    rows.push(
+      [],
+      ['Kategori', category.name],
+      ['Pemilih', VOTER_SCOPE[category.voterScope]],
+      ['No. Urut', 'Nama Kandidat', 'Kelas / Peran', 'Jumlah Suara', 'Persentase (%)'],
+      ...category.candidates.map((c) => [c.candidateNumber, c.name, c.role === 'teacher' ? 'Guru' : c.className, c.votes, c.percentage]),
+      ['Total suara kategori', category.totalVotes],
+      ['Partisipasi kategori (%)', category.turnout],
+      [category.tie ? 'Hasil seri' : 'Terpilih', winners.map((w) => w.name).join(' / ') || '-'],
+    );
+  }
+  const csv = toCsv(rows);
 
   await recordAudit({ action: AUDIT.RESULTS_EXPORTED, status: 'success', userId: admin.id, actor: admin.nis });
   res

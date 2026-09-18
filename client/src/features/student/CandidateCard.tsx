@@ -2,6 +2,7 @@ import type { MouseEvent } from 'react';
 import { CandidateBadge, CandidatePhoto } from '../../components/CandidateVisuals';
 import { candidateAccent } from '../../lib/candidates';
 import { cn } from '../../lib/cn';
+import { personMeta } from '../../lib/voting';
 import type { Candidate } from '../../types';
 
 interface CandidateCardProps {
@@ -28,7 +29,7 @@ export function CandidateCard({ candidate, onDetail, onPick }: CandidateCardProp
           <h3 id={titleId} className="text-[17px] font-extrabold">
             {candidate.name}
           </h3>
-          <p className="mt-1 text-[13px] text-ink-muted">{candidate.className}</p>
+          <p className="mt-1 text-[13px] text-ink-muted">{personMeta(candidate)}</p>
         </div>
         <div className="border-t border-line-soft pt-2.5">
           <p className={cn('eyebrow mb-1.5', accent.label)}>Visi</p>

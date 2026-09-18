@@ -3,13 +3,15 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import type {
   AdminCandidate,
+  AdminCategory,
   AuditLogEntry,
   AuditStatus,
   Paginated,
   ResultsResponse,
   SchoolClass,
   StatsResponse,
-  Student,
+  Voter,
+  VoterRole,
 } from '../types';
 
 function toQuery(params: Record<string, string | number | undefined>): string {
@@ -56,6 +58,13 @@ export function useAuditLogs(filters: AuditLogFilters, refetchInterval: number |
   });
 }
 
+export function useAdminCategories() {
+  return useQuery({
+    queryKey: ['admin', 'categories'],
+    queryFn: async () => (await api<{ categories: AdminCategory[] }>('/admin/categories')).categories,
+  });
+}
+
 export function useAdminCandidates() {
   return useQuery({
     queryKey: ['admin', 'candidates'],
@@ -63,21 +72,31 @@ export function useAdminCandidates() {
   });
 }
 
-export interface StudentFilters {
+export interface VoterFilters {
   page: number;
   pageSize?: number;
   q?: string;
+  /** Hanya untuk siswa. */
   classId?: number | '';
   gradeLevel?: '10' | '11' | '12' | 'none' | '';
   voted?: 'all' | 'yes' | 'no';
 }
 
-export function useStudents(filters: StudentFilters) {
+export interface VotersResponse extends Paginated {
+  voters: Voter[];
+  /** Jumlah kategori yang boleh dipilih oleh peran ini. */
+  eligibleCategories: number;
+}
+
+/** Endpoint siswa & guru untuk panitia: /admin/students atau /admin/teachers. */
+export const VOTER_ENDPOINT: Record<VoterRole, string> = { student: '/admin/students', teacher: '/admin/teachers' };
+
+export function useVoters(role: VoterRole, filters: VoterFilters, enabled = true) {
   return useQuery({
-    queryKey: ['admin', 'students', filters],
-    queryFn: () =>
-      api<Paginated & { students: Student[] }>(`/admin/students${toQuery({ pageSize: 25, ...filters })}`),
+    queryKey: ['admin', role === 'student' ? 'students' : 'teachers', filters],
+    queryFn: () => api<VotersResponse>(`${VOTER_ENDPOINT[role]}${toQuery({ pageSize: 25, ...filters })}`),
     placeholderData: keepPreviousData,
+    enabled,
   });
 }
 

@@ -36,7 +36,8 @@ adminClassesRouter.get('/', async (_req, res) => {
     }),
     prisma.user.groupBy({
       by: ['classId'],
-      where: { role: 'student', hasVoted: true, classId: { not: null } },
+      // Siswa yang sudah memilih di minimal satu kategori.
+      where: { role: 'student', classId: { not: null }, votes: { some: {} } },
       _count: { _all: true },
     }),
   ]);

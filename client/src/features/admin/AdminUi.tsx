@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, CircleAlert, CircleCheck, CircleSlash, type LucideIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CircleAlert, CircleCheck, CircleSlash, MoveHorizontal, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useElection } from '../../hooks/queries';
 import { cn } from '../../lib/cn';
@@ -69,6 +69,15 @@ export function Panel({
       )}
       {children}
     </section>
+  );
+}
+
+/** Petunjuk bahwa tabel lebar bisa digeser; hanya perlu di layar sempit. */
+export function TableSwipeHint() {
+  return (
+    <p className="mb-2.5 flex items-center gap-1.5 text-xs text-ink-muted sm:hidden">
+      <MoveHorizontal aria-hidden className="size-3.5 shrink-0" /> Geser tabel ke samping untuk melihat kolom lainnya.
+    </p>
   );
 }
 

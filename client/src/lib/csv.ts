@@ -44,9 +44,10 @@ export function parseCsv(text: string): string[][] {
 
 type Cell = string | number | boolean | null | undefined | unknown;
 
-export interface StudentImportRow {
+export interface VoterImportRow {
   nis: string;
   name: string;
+  /** Kosong untuk guru (guru tidak terikat kelas). */
   className: string;
   password: string;
   /** true bila kode akses dibuat otomatis karena kolomnya kosong. */
@@ -54,14 +55,19 @@ export interface StudentImportRow {
 }
 
 const HEADER_ALIASES = {
-  nis: ['nis', 'nisn', 'username', 'no induk', 'nomor induk'],
-  name: ['nama', 'name', 'nama siswa', 'nama_siswa', 'nama lengkap'],
+  nis: ['nis', 'nisn', 'no induk', 'nomor induk'],
+  /** Guru memakai username buatan panitia — NIP sengaja tidak dipakai. */
+  username: ['username', 'user', 'nama pengguna', 'akun'],
+  name: ['nama', 'name', 'nama siswa', 'nama_siswa', 'nama guru', 'nama lengkap'],
   className: ['kelas', 'class', 'rombel', 'rombongan belajar'],
   password: ['kode_akses', 'kode akses', 'kode', 'password'],
 } as const;
 
 export const STUDENT_CSV_TEMPLATE =
   'nis,nama,kelas,kode_akses\r\n0021501,Nama Siswa Contoh,X-1,\r\n0021502,Nama Siswa Lain,XI IPA 2,kode1234\r\n';
+
+export const TEACHER_CSV_TEMPLATE =
+  'username,nama,kode_akses\r\nguru.contoh,Nama Guru Contoh,\r\nguru.lain,Nama Guru Lain,kode1234\r\n';
 
 const CODE_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
 
@@ -77,10 +83,13 @@ function cellText(value: Cell): string {
 }
 
 /**
- * Memvalidasi baris siswa (dari CSV atau Excel) dengan aturan yang sama seperti server.
- * Kode akses boleh kosong — akan dibuat otomatis.
+ * Memvalidasi baris pemilih (dari CSV atau Excel) dengan aturan yang sama seperti server.
+ * Kode akses boleh kosong — akan dibuat otomatis. Kolom kelas hanya wajib untuk siswa.
  */
-export function parseStudentRows(table: Cell[][]): { rows: StudentImportRow[]; errors: string[] } {
+export function parseVoterRows(
+  table: Cell[][],
+  { withClass = true }: { withClass?: boolean } = {},
+): { rows: VoterImportRow[]; errors: string[] } {
   const nonEmpty = table
     .map((cells, index) => ({ cells, line: index + 1 }))
     .filter(({ cells }) => cells.some((value) => cellText(value) !== ''));
@@ -90,19 +99,20 @@ export function parseStudentRows(table: Cell[][]): { rows: StudentImportRow[]; e
   const normalized = header.cells.map((h) => cellText(h).toLowerCase().replace(/\s+/g, ' '));
   const column = (aliases: readonly string[]) => normalized.findIndex((h) => aliases.includes(h));
   const columns = {
-    nis: column(HEADER_ALIASES.nis),
+    nis: column(withClass ? HEADER_ALIASES.nis : HEADER_ALIASES.username),
     name: column(HEADER_ALIASES.name),
     className: column(HEADER_ALIASES.className),
     password: column(HEADER_ALIASES.password),
   };
-  const missing = (['nis', 'name', 'className'] as const)
+  const idLabel = withClass ? 'NIS' : 'Username';
+  const missing = (withClass ? (['nis', 'name', 'className'] as const) : (['nis', 'name'] as const))
     .filter((field) => columns[field] === -1)
-    .map((field) => HEADER_ALIASES[field][0]);
+    .map((field) => (field === 'nis' ? (withClass ? 'nis' : 'username') : HEADER_ALIASES[field][0]));
   if (missing.length) {
     return { rows: [], errors: [`Kolom wajib tidak ditemukan: ${missing.join(', ')}. Gunakan template.`] };
   }
 
-  const rows: StudentImportRow[] = [];
+  const rows: VoterImportRow[] = [];
   const errors: string[] = [];
   const seenNis = new Set<string>();
   for (const { cells, line } of body) {
@@ -112,14 +122,15 @@ export function parseStudentRows(table: Cell[][]): { rows: StudentImportRow[]; e
     const className = value(columns.className).replace(/\s+/g, ' ');
     const code = value(columns.password);
 
-    if (!/^[A-Za-z0-9._-]{3,32}$/.test(nis)) errors.push(`Baris ${line}: NIS "${nis}" tidak valid.`);
-    else if (seenNis.has(nis.toLowerCase())) errors.push(`Baris ${line}: NIS ${nis} muncul lebih dari sekali.`);
+    if (!/^[A-Za-z0-9._-]{3,32}$/.test(nis)) errors.push(`Baris ${line}: ${idLabel} "${nis}" tidak valid.`);
+    else if (seenNis.has(nis.toLowerCase())) errors.push(`Baris ${line}: ${idLabel} ${nis} muncul lebih dari sekali.`);
     else if (name.length < 2 || name.length > 120) errors.push(`Baris ${line}: nama harus 2–120 karakter.`);
-    else if (!className || className.length > 40) errors.push(`Baris ${line}: kelas wajib diisi (maks. 40 karakter).`);
+    else if (withClass && (!className || className.length > 40))
+      errors.push(`Baris ${line}: kelas wajib diisi (maks. 40 karakter).`);
     else if (code && code.length < 6) errors.push(`Baris ${line}: kode akses minimal 6 karakter (atau kosongkan).`);
     else {
       seenNis.add(nis.toLowerCase());
-      rows.push({ nis, name, className, password: code || randomAccessCode(), generatedCode: !code });
+      rows.push({ nis, name, className: withClass ? className : '', password: code || randomAccessCode(), generatedCode: !code });
     }
   }
   return { rows, errors };

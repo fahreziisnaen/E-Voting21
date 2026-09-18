@@ -1,49 +1,40 @@
-import { CalendarDays, CircleAlert, CircleCheck, Clock, Eye } from 'lucide-react';
+import { CalendarDays, CircleCheck, CircleDashed, CircleMinus, Clock, Eye, LogIn, Trophy } from 'lucide-react';
 import { Link } from 'react-router';
-import { PHASE_INFO, TONE_BADGE } from '../../lib/election';
+import type { LoginRedirectState } from '../../components/RouteGuards';
 import { cn } from '../../lib/cn';
+import { PHASE_INFO, TONE_BADGE } from '../../lib/election';
 import { formatDateRange, formatTimeRange } from '../../lib/format';
-import type { Election } from '../../types';
+import { canVoteIn, eligibleCategories, VOTER_SCOPE_LABEL } from '../../lib/voting';
+import type { Category, Election, MeResponse } from '../../types';
 
 const STEPS = [
-  'Login menggunakan akun siswa.',
-  'Pilih salah satu kandidat.',
+  'Masuk dengan NIS (siswa) atau username (guru) beserta kode akses dari panitia.',
+  'Buka kategori, lalu pilih satu kandidat.',
   'Periksa kembali pilihan Anda.',
   'Konfirmasi suara.',
-  'Selesai.',
+  'Ulangi untuk kategori lainnya hingga selesai.',
 ];
+
+const LOGIN_STATE: LoginRedirectState = { from: '/' };
 
 interface VotingSidebarProps {
   election: Election | undefined;
-  hasVoted: boolean;
-  isPreview: boolean;
+  categories: Category[] | undefined;
+  me: MeResponse | null;
+  votedCategoryIds: Set<number>;
+  /** Pengunjung yang belum masuk. */
+  isGuest: boolean;
 }
 
-export function VotingSidebar({ election, hasVoted, isPreview }: VotingSidebarProps) {
+export function VotingSidebar({ election, categories, me, votedCategoryIds, isGuest }: VotingSidebarProps) {
   const phase = election ? PHASE_INFO[election.phase] : null;
-
-  let status: { text: string; hint: string; tone: 'done' | 'pending' };
-  if (isPreview) {
-    status = { text: 'Mode pratinjau panitia', hint: 'Akun panitia tidak dapat memberikan suara.', tone: 'pending' };
-  } else if (hasVoted) {
-    status = {
-      text: 'Anda sudah memberikan suara',
-      hint: 'Terima kasih telah berpartisipasi. Pilihan tidak dapat diubah.',
-      tone: 'done',
-    };
-  } else {
-    status = {
-      text: 'Anda belum memberikan suara',
-      hint:
-        !election || election.isVotingOpen
-          ? 'Pilih salah satu kandidat sebelum masa pemungutan suara ditutup.'
-          : PHASE_INFO[election.phase].message,
-      tone: 'pending',
-    };
-  }
+  const isPreview = me?.user.role === 'admin';
+  const eligible = me && !isPreview ? eligibleCategories(categories ?? [], me.user.role) : [];
+  const done = eligible.filter((c) => votedCategoryIds.has(c.id)).length;
+  const closedHint = election && !election.isVotingOpen ? PHASE_INFO[election.phase].message : null;
 
   return (
-    <aside aria-label="Informasi pemungutan suara" className="grid content-start items-start gap-4 md:grid-cols-2 xl:grid-cols-1">
+    <aside aria-label="Informasi pemungutan suara" className="grid min-w-0 content-start items-start gap-4 md:grid-cols-2 xl:grid-cols-1">
       <section aria-labelledby="jadwal-title" className="rounded-card border border-line bg-white p-[18px]">
         <div className="mb-3.5 flex items-center gap-2.5">
           <span aria-hidden className="flex size-[34px] items-center justify-center rounded-button bg-royal-soft text-royal">
@@ -87,28 +78,81 @@ export function VotingSidebar({ election, hasVoted, isPreview }: VotingSidebarPr
             </span>
           )}
         </div>
-        <p
-          className={cn(
-            'flex items-center gap-2 text-[15px] font-bold',
-            status.tone === 'done' ? 'text-success-ink' : 'text-warning-ink',
-          )}
-        >
-          {isPreview ? (
-            <Eye aria-hidden className="size-[18px] shrink-0" />
-          ) : status.tone === 'done' ? (
-            <CircleCheck aria-hidden className="size-[18px] shrink-0" />
-          ) : (
-            <CircleAlert aria-hidden className="size-[18px] shrink-0" />
-          )}
-          {status.text}
-        </p>
-        <p className="mt-1.5 text-[13px] leading-normal text-ink-muted">{status.hint}</p>
-        {hasVoted && !isPreview && (
-          <Link to="/voting/berhasil" className="mt-2.5 inline-block text-[13px] font-bold text-royal hover:text-navy-hover">
-            Lihat bukti suara
-          </Link>
+
+        {isGuest ? (
+          <>
+            <p className="flex items-center gap-2 text-[15px] font-bold text-royal">
+              <LogIn aria-hidden className="size-[18px] shrink-0" /> Masuk untuk memberikan suara
+            </p>
+            <p className="mt-1.5 text-[13px] leading-normal text-ink-muted">
+              {closedHint ?? 'Siswa memakai NIS, guru memakai username, beserta kode akses dari panitia.'}
+            </p>
+            <Link to="/login" state={LOGIN_STATE} className="btn btn-primary mt-3.5 h-10 w-full">
+              <LogIn aria-hidden className="size-4" /> Masuk untuk Memilih
+            </Link>
+          </>
+        ) : isPreview ? (
+          <>
+            <p className="flex items-center gap-2 text-[15px] font-bold text-warning-ink">
+              <Eye aria-hidden className="size-[18px] shrink-0" /> Mode pratinjau panitia
+            </p>
+            <p className="mt-1.5 text-[13px] leading-normal text-ink-muted">Akun panitia tidak dapat memberikan suara.</p>
+          </>
+        ) : me ? (
+          <>
+            <p className={cn('text-[15px] font-bold', done === eligible.length && eligible.length ? 'text-success-ink' : 'text-warning-ink')}>
+              {eligible.length === 0
+                ? 'Belum ada kategori untuk Anda'
+                : done === eligible.length
+                  ? 'Anda sudah memilih di semua kategori'
+                  : `Sudah memilih ${done} dari ${eligible.length} kategori`}
+            </p>
+            {closedHint && <p className="mt-1.5 text-[13px] leading-normal text-ink-muted">{closedHint}</p>}
+            <ul className="mt-3 flex flex-col gap-2">
+              {(categories ?? []).map((category) => {
+                const allowed = canVoteIn(me.user.role, category.voterScope);
+                const voted = votedCategoryIds.has(category.id);
+                return (
+                  <li key={category.id} className="flex items-center gap-2 text-[13px]">
+                    {!allowed ? (
+                      <CircleMinus aria-hidden className="size-4 shrink-0 text-ink-subtle" />
+                    ) : voted ? (
+                      <CircleCheck aria-hidden className="size-4 shrink-0 text-success-ink" />
+                    ) : (
+                      <CircleDashed aria-hidden className="size-4 shrink-0 text-warning-ink" />
+                    )}
+                    <span className={cn('min-w-0 flex-1 truncate font-semibold', !allowed && 'text-ink-muted')}>{category.name}</span>
+                    <span className={cn('shrink-0', !allowed ? 'text-ink-muted' : voted ? 'text-success-ink' : 'text-warning-ink')}>
+                      {!allowed ? VOTER_SCOPE_LABEL[category.voterScope] : voted ? 'Sudah' : 'Belum'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            {done > 0 && (
+              <Link to="/voting/berhasil" className="mt-2 inline-block py-1.5 text-[13px] font-bold text-royal hover:text-navy-hover">
+                Lihat bukti suara
+              </Link>
+            )}
+          </>
+        ) : (
+          <div aria-hidden className="h-12 animate-pulse rounded bg-line-soft" />
         )}
       </section>
+
+      {election?.resultsPublished && (
+        <section aria-labelledby="hasil-title" className="rounded-card border-2 border-gold bg-gold-pale/20 p-[18px]">
+          <h2 id="hasil-title" className="flex items-center gap-2 text-[15px] font-extrabold">
+            <Trophy aria-hidden className="size-[18px] text-gold-ink" /> Hasil sudah diumumkan
+          </h2>
+          <p className="mt-1.5 text-[13px] leading-normal text-ink-body">
+            Perolehan suara setiap kandidat kini terbuka untuk umum.
+          </p>
+          <Link to="/terpilih" className="btn btn-primary mt-3 h-10 w-full">
+            Lihat Kandidat Terpilih
+          </Link>
+        </section>
+      )}
 
       <section id="tatacara" aria-labelledby="tatacara-title" className="scroll-mt-24 rounded-card border border-line bg-white p-[18px]">
         <h2 id="tatacara-title" className="mb-3.5 text-[15px] font-extrabold">
@@ -137,7 +181,7 @@ export function VotingSidebar({ election, hasVoted, isPreview }: VotingSidebarPr
           !
         </span>
         <p className="text-[13px] leading-normal font-semibold text-danger-ink">
-          Setiap siswa hanya dapat memilih satu kali. Pastikan pilihan Anda sudah benar sebelum konfirmasi.
+          Setiap pemilih hanya dapat memilih satu kali di setiap kategori. Pastikan pilihan Anda sudah benar sebelum konfirmasi.
         </p>
       </div>
     </aside>

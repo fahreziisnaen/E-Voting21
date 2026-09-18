@@ -12,6 +12,9 @@ export const AUDIT = {
   CANDIDATE_UPDATED: 'candidate.updated',
   CANDIDATE_DELETED: 'candidate.deleted',
   CANDIDATE_PHOTO_UPDATED: 'candidate.photo_updated',
+  CATEGORY_CREATED: 'category.created',
+  CATEGORY_UPDATED: 'category.updated',
+  CATEGORY_DELETED: 'category.deleted',
   CLASS_CREATED: 'class.created',
   CLASS_UPDATED: 'class.updated',
   CLASS_DELETED: 'class.deleted',
@@ -20,8 +23,18 @@ export const AUDIT = {
   STUDENT_DELETED: 'student.deleted',
   STUDENT_ACCESS_CODE_RESET: 'student.access_code_reset',
   STUDENTS_IMPORTED: 'student.imported',
+  TEACHER_CREATED: 'teacher.created',
+  TEACHER_UPDATED: 'teacher.updated',
+  TEACHER_DELETED: 'teacher.deleted',
+  TEACHER_ACCESS_CODE_RESET: 'teacher.access_code_reset',
+  TEACHERS_IMPORTED: 'teacher.imported',
   RESULTS_EXPORTED: 'results.exported',
+  RESULTS_PUBLISHED: 'results.published',
+  RESULTS_UNPUBLISHED: 'results.unpublished',
   ADMIN_PASSWORD_CHANGED: 'admin.password_changed',
+  BACKUP_CREATED: 'backup.created',
+  BACKUP_RESTORED: 'backup.restored',
+  FACTORY_RESET: 'system.factory_reset',
 } as const;
 
 export type AuditAction = (typeof AUDIT)[keyof typeof AUDIT];

@@ -6,7 +6,7 @@ import { photoUpload, removeUpload, saveImage } from '../../lib/uploads.js';
 import { currentUser } from '../../middleware/auth.js';
 import { AUDIT, recordAudit } from '../../services/audit.js';
 import { candidateInclude, serializeAdminCandidate } from '../../services/candidates.js';
-import { computeElectionPhase } from '../../services/election.js';
+import { electionInProgress } from '../../services/election.js';
 
 export const adminCandidatesRouter = Router();
 
@@ -19,26 +19,22 @@ const textList = (label: string, min: number) =>
     .max(10, `${label} maksimal 10 butir.`);
 
 const candidateSchema = z.object({
+  categoryId: z.coerce.number({ error: 'Pilih kategori.' }).int().positive('Pilih kategori.'),
   candidateNumber: z.coerce
     .number({ error: 'Nomor urut wajib diisi.' })
     .int('Nomor urut harus bilangan bulat.')
     .min(1, 'Nomor urut minimal 1.')
     .max(99, 'Nomor urut maksimal 99.'),
-  studentId: z.coerce.number({ error: 'Pilih siswa sebagai kandidat.' }).int().positive('Pilih siswa sebagai kandidat.'),
+  userId: z.coerce.number({ error: 'Pilih siswa atau guru sebagai kandidat.' }).int().positive('Pilih siswa atau guru sebagai kandidat.'),
   vision: z.string().trim().min(5, 'Visi minimal 5 karakter.').max(1000, 'Visi maksimal 1000 karakter.'),
   mission: textList('Misi', 1),
   programs: textList('Program kerja', 0),
   organizationHistory: textList('Riwayat organisasi', 0),
 });
 
-type CandidateInput = z.infer<typeof candidateSchema>;
+const listQuery = z.object({ categoryId: z.coerce.number().int().positive().optional() });
 
-async function electionInProgress(): Promise<boolean> {
-  const settings = await prisma.electionSettings.findUnique({ where: { id: 1 } });
-  if (!settings) return false;
-  const phase = computeElectionPhase(settings);
-  return phase === 'active' || phase === 'outside_hours';
-}
+type CandidateInput = z.infer<typeof candidateSchema>;
 
 async function findCandidate(id: number) {
   const candidate = await prisma.candidate.findUnique({ where: { id }, include: candidateInclude });
@@ -46,41 +42,56 @@ async function findCandidate(id: number) {
   return candidate;
 }
 
-/** Pesan yang jelas untuk nomor urut / siswa yang sudah dipakai kandidat lain. */
+function conflict(status: number, code: string, path: string, message: string): HttpError {
+  return new HttpError(status, message, code, [{ path, message }]);
+}
+
+/** Pesan yang jelas untuk kategori, nomor urut, atau orang yang sudah dipakai di kategori yang sama. */
 async function assertAvailable(input: CandidateInput, currentId?: number) {
-  const student = await prisma.user.findFirst({
-    where: { id: input.studentId, role: 'student' },
-    select: { id: true, candidacy: { select: { id: true, candidateNumber: true } } },
+  const category = await prisma.category.findUnique({ where: { id: input.categoryId }, select: { id: true, name: true } });
+  if (!category) throw conflict(400, 'VALIDATION_ERROR', 'categoryId', 'Kategori yang dipilih tidak ditemukan.');
+
+  const person = await prisma.user.findFirst({
+    where: { id: input.userId, role: { in: ['student', 'teacher'] } },
+    select: { candidacies: { where: { categoryId: input.categoryId }, select: { id: true, candidateNumber: true } } },
   });
-  if (!student) {
-    throw new HttpError(400, 'Siswa yang dipilih tidak ditemukan.', 'VALIDATION_ERROR', [
-      { path: 'studentId', message: 'Siswa yang dipilih tidak ditemukan.' },
-    ]);
+  if (!person) throw conflict(400, 'VALIDATION_ERROR', 'userId', 'Siswa/guru yang dipilih tidak ditemukan.');
+  const existing = person.candidacies[0];
+  if (existing && existing.id !== currentId) {
+    throw conflict(
+      409,
+      'ALREADY_CANDIDATE',
+      'userId',
+      `Orang ini sudah terdaftar sebagai kandidat No. ${existing.candidateNumber} di kategori ${category.name}.`,
+    );
   }
-  if (student.candidacy && student.candidacy.id !== currentId) {
-    const message = `Siswa ini sudah terdaftar sebagai kandidat No. ${student.candidacy.candidateNumber}.`;
-    throw new HttpError(409, message, 'STUDENT_ALREADY_CANDIDATE', [{ path: 'studentId', message }]);
-  }
+
   const sameNumber = await prisma.candidate.findUnique({
-    where: { candidateNumber: input.candidateNumber },
+    where: { categoryId_candidateNumber: { categoryId: input.categoryId, candidateNumber: input.candidateNumber } },
     select: { id: true },
   });
   if (sameNumber && sameNumber.id !== currentId) {
-    const message = 'Nomor urut sudah dipakai kandidat lain.';
-    throw new HttpError(409, message, 'DUPLICATE_CANDIDATE_NUMBER', [{ path: 'candidateNumber', message }]);
+    throw conflict(409, 'DUPLICATE_CANDIDATE_NUMBER', 'candidateNumber', `Nomor urut sudah dipakai di kategori ${category.name}.`);
   }
 }
 
-function toData(input: CandidateInput) {
-  const { studentId, ...rest } = input;
-  return { ...rest, userId: studentId };
+const RACE_MESSAGE = 'Nomor urut atau kandidat baru saja dipakai di kategori ini. Muat ulang lalu coba lagi.';
+
+function auditMeta(candidate: Awaited<ReturnType<typeof findCandidate>>) {
+  return {
+    candidateId: candidate.id,
+    categoryId: candidate.category.id,
+    category: candidate.category.name,
+    candidateNumber: candidate.candidateNumber,
+    name: candidate.user.name,
+  };
 }
 
-const RACE_MESSAGE = 'Nomor urut atau siswa baru saja dipakai kandidat lain. Muat ulang lalu coba lagi.';
-
-adminCandidatesRouter.get('/', async (_req, res) => {
+adminCandidatesRouter.get('/', async (req, res) => {
+  const { categoryId } = listQuery.parse(req.query);
   const candidates = await prisma.candidate.findMany({
-    orderBy: { candidateNumber: 'asc' },
+    where: categoryId ? { categoryId } : undefined,
+    orderBy: [{ category: { sortOrder: 'asc' } }, { categoryId: 'asc' }, { candidateNumber: 'asc' }],
     include: { ...candidateInclude, _count: { select: { votes: true } } },
   });
   res.json({
@@ -99,14 +110,8 @@ adminCandidatesRouter.post('/', async (req, res) => {
   }
   await assertAvailable(input);
   try {
-    const candidate = await prisma.candidate.create({ data: toData(input), include: candidateInclude });
-    await recordAudit({
-      action: AUDIT.CANDIDATE_CREATED,
-      status: 'success',
-      userId: admin.id,
-      actor: admin.nis,
-      metadata: { candidateId: candidate.id, candidateNumber: candidate.candidateNumber, name: candidate.user.name },
-    });
+    const candidate = await prisma.candidate.create({ data: input, include: candidateInclude });
+    await recordAudit({ action: AUDIT.CANDIDATE_CREATED, status: 'success', userId: admin.id, actor: admin.nis, metadata: auditMeta(candidate) });
     res.status(201).json({ candidate: serializeAdminCandidate(candidate) });
   } catch (err) {
     if (isUniqueViolation(err)) throw new HttpError(409, RACE_MESSAGE, 'CANDIDATE_CONFLICT');
@@ -119,24 +124,24 @@ adminCandidatesRouter.put('/:id', async (req, res) => {
   const id = idParam.parse(req.params.id);
   const input = candidateSchema.parse(req.body);
   const existing = await findCandidate(id);
-  const identityChanged = existing.candidateNumber !== input.candidateNumber || existing.userId !== input.studentId;
+  const identityChanged =
+    existing.categoryId !== input.categoryId ||
+    existing.candidateNumber !== input.candidateNumber ||
+    existing.userId !== input.userId;
   if (identityChanged && (await electionInProgress())) {
     throw new HttpError(
       409,
-      'Nomor urut dan siswa kandidat tidak dapat diubah saat masa pemungutan suara berlangsung.',
+      'Kategori, nomor urut, dan orang kandidat tidak dapat diubah saat masa pemungutan suara berlangsung.',
       'ELECTION_IN_PROGRESS',
     );
   }
+  if (identityChanged && existing.categoryId !== input.categoryId && (await prisma.vote.count({ where: { candidateId: id } })) > 0) {
+    throw new HttpError(409, 'Kandidat yang sudah memperoleh suara tidak dapat dipindah ke kategori lain.', 'CANDIDATE_HAS_VOTES');
+  }
   await assertAvailable(input, id);
   try {
-    const candidate = await prisma.candidate.update({ where: { id }, data: toData(input), include: candidateInclude });
-    await recordAudit({
-      action: AUDIT.CANDIDATE_UPDATED,
-      status: 'success',
-      userId: admin.id,
-      actor: admin.nis,
-      metadata: { candidateId: id, candidateNumber: candidate.candidateNumber, name: candidate.user.name },
-    });
+    const candidate = await prisma.candidate.update({ where: { id }, data: input, include: candidateInclude });
+    await recordAudit({ action: AUDIT.CANDIDATE_UPDATED, status: 'success', userId: admin.id, actor: admin.nis, metadata: auditMeta(candidate) });
     res.json({ candidate: serializeAdminCandidate(candidate) });
   } catch (err) {
     if (isUniqueViolation(err)) throw new HttpError(409, RACE_MESSAGE, 'CANDIDATE_CONFLICT');
@@ -154,16 +159,10 @@ adminCandidatesRouter.delete('/:id', async (req, res) => {
   if ((await prisma.vote.count({ where: { candidateId: id } })) > 0) {
     throw new HttpError(409, 'Kandidat yang sudah memperoleh suara tidak dapat dihapus.', 'CANDIDATE_HAS_VOTES');
   }
-  // Hanya status kandidat yang dihapus; data siswanya tetap ada.
+  // Hanya status kandidat yang dihapus; data siswa/gurunya tetap ada.
   await prisma.candidate.delete({ where: { id } });
   await removeUpload(candidate.photoUrl);
-  await recordAudit({
-    action: AUDIT.CANDIDATE_DELETED,
-    status: 'success',
-    userId: admin.id,
-    actor: admin.nis,
-    metadata: { candidateId: id, candidateNumber: candidate.candidateNumber, name: candidate.user.name },
-  });
+  await recordAudit({ action: AUDIT.CANDIDATE_DELETED, status: 'success', userId: admin.id, actor: admin.nis, metadata: auditMeta(candidate) });
   res.status(204).end();
 });
 
@@ -179,7 +178,7 @@ adminCandidatesRouter.post('/:id/photo', photoUpload, async (req, res) => {
     status: 'success',
     userId: admin.id,
     actor: admin.nis,
-    metadata: { candidateId: id, name: candidate.user.name },
+    metadata: auditMeta(candidate),
   });
   res.json({ candidate: serializeAdminCandidate(candidate) });
 });
@@ -195,7 +194,7 @@ adminCandidatesRouter.delete('/:id/photo', async (req, res) => {
     status: 'success',
     userId: admin.id,
     actor: admin.nis,
-    metadata: { candidateId: id, name: candidate.user.name, removed: true },
+    metadata: { ...auditMeta(candidate), removed: true },
   });
   res.json({ candidate: serializeAdminCandidate(candidate) });
 });

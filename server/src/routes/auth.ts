@@ -19,7 +19,7 @@ import { AUDIT, recordAudit } from '../services/audit.js';
 export const authRouter = Router();
 
 const loginSchema = z.object({
-  nis: z.string({ error: 'NIS / username wajib diisi.' }).trim().min(1, 'NIS / username wajib diisi.').max(64),
+  nis: z.string({ error: 'NIS / Username wajib diisi.' }).trim().min(1, 'NIS / Username wajib diisi.').max(64),
   password: z.string({ error: 'Kode akses wajib diisi.' }).min(1, 'Kode akses wajib diisi.').max(128),
 });
 
@@ -93,11 +93,34 @@ authRouter.post('/logout', async (req, res) => {
   res.status(204).end();
 });
 
-authRouter.get('/me', requireAuth, async (req, res) => {
-  const user = currentUser(req);
-  const vote =
-    user.role === 'student' && user.hasVoted
-      ? await prisma.vote.findUnique({ where: { userId: user.id }, select: { receiptCode: true, votedAt: true } })
-      : null;
-  res.json({ user: toUserDto(user), hasVoted: user.hasVoted, vote });
-});
+/**
+ * Beranda bersifat publik: pengunjung tanpa cookie sesi sama sekali mendapat `user: null` (200),
+ * bukan 401, agar tidak memicu percobaan refresh yang pasti gagal.
+ */
+authRouter.get(
+  '/me',
+  (req, res, next) => {
+    if (!req.cookies?.[ACCESS_COOKIE] && !req.cookies?.[REFRESH_COOKIE]) {
+      res.json({ user: null, votes: [] });
+      return;
+    }
+    next();
+  },
+  requireAuth,
+  async (req, res) => {
+    const user = currentUser(req);
+    // Status memilih per kategori (tanpa kandidat pilihan) — selalu dari database.
+    const votes =
+      user.role === 'admin'
+        ? []
+        : await prisma.vote.findMany({
+            where: { userId: user.id },
+            orderBy: { votedAt: 'asc' },
+            select: { categoryId: true, receiptCode: true, votedAt: true, category: { select: { name: true } } },
+          });
+    res.json({
+      user: toUserDto(user),
+      votes: votes.map(({ category, ...vote }) => ({ ...vote, categoryName: category.name })),
+    });
+  },
+);

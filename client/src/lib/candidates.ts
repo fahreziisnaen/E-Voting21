@@ -5,6 +5,7 @@ const ACCENTS = [
     button: 'bg-crimson text-white hover:brightness-[0.93]',
     label: 'text-crimson',
     bar: 'bg-crimson',
+    border: 'border-crimson',
     color: '#E31E24',
   },
   {
@@ -12,6 +13,7 @@ const ACCENTS = [
     button: 'bg-gold text-ink hover:brightness-95',
     label: 'text-gold-ink',
     bar: 'bg-gold',
+    border: 'border-gold',
     color: '#F4C20D',
   },
   {
@@ -19,6 +21,7 @@ const ACCENTS = [
     button: 'bg-royal text-white hover:brightness-[0.93]',
     label: 'text-royal',
     bar: 'bg-royal',
+    border: 'border-royal',
     color: '#0B5CAB',
   },
   {
@@ -26,6 +29,7 @@ const ACCENTS = [
     button: 'bg-navy text-white hover:brightness-125',
     label: 'text-navy',
     bar: 'bg-navy',
+    border: 'border-navy',
     color: '#0F1F38',
   },
 ] as const;

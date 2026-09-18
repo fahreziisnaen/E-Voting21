@@ -1,10 +1,17 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { HttpError } from '../../lib/http-error.js';
 import { prisma } from '../../lib/prisma.js';
 import { photoUpload, removeUpload, saveImage } from '../../lib/uploads.js';
 import { currentUser } from '../../middleware/auth.js';
 import { AUDIT, recordAudit } from '../../services/audit.js';
-import { getElectionSettings, serializeElection } from '../../services/election.js';
+import {
+  computeElectionPhase,
+  electionView,
+  getElectionSettings,
+  isVotingInProgress,
+  resetCompletionCache,
+} from '../../services/election.js';
 
 export const adminElectionRouter = Router();
 
@@ -24,17 +31,21 @@ const electionSchema = z
   });
 
 adminElectionRouter.get('/', async (_req, res) => {
-  res.json({ election: serializeElection(await getElectionSettings()) });
+  res.json({ election: (await electionView()).election });
 });
 
 adminElectionRouter.put('/', async (req, res) => {
   const admin = currentUser(req);
   const data = electionSchema.parse(req.body);
   const before = await prisma.electionSettings.findUnique({ where: { id: 1 } });
+  // Jadwal dibuka kembali → pengumuman hasil ditarik dan status "ditahan" direset, sehingga hasil
+  // kembali terbuka otomatis saat pemungutan suara selesai lagi.
+  const reopened = isVotingInProgress(computeElectionPhase(data));
+  const withdrawResults = reopened && (Boolean(before?.resultsPublishedAt) || Boolean(before?.resultsWithheld));
   const settings = await prisma.electionSettings.upsert({
     where: { id: 1 },
     create: { id: 1, ...data },
-    update: data,
+    update: { ...data, ...(reopened ? { resultsPublishedAt: null, resultsWithheld: false } : {}) },
   });
   await recordAudit({
     action: AUDIT.ELECTION_UPDATED,
@@ -48,25 +59,57 @@ adminElectionRouter.put('/', async (req, res) => {
         endDate: before.endDate.toISOString(),
       },
       after: { status: settings.status, startDate: settings.startDate.toISOString(), endDate: settings.endDate.toISOString() },
+      resultsWithdrawn: withdrawResults || undefined,
     },
   });
-  res.json({ election: serializeElection(settings) });
+  res.json({ election: (await electionView()).election });
+});
+
+const publicationSchema = z.object({ published: z.boolean({ error: 'Nilai published wajib diisi.' }) });
+
+/**
+ * Tahan / buka kembali pengumuman hasil. Hasil terbuka otomatis saat syaratnya terpenuhi, jadi
+ * endpoint ini dipakai panitia untuk menahan hasil (mis. ada sengketa) atau membukanya kembali.
+ */
+adminElectionRouter.put('/results-publication', async (req, res) => {
+  const admin = currentUser(req);
+  const { published } = publicationSchema.parse(req.body);
+  resetCompletionCache();
+  const { publication } = await electionView();
+  if (published && !publication.unlocked) {
+    throw new HttpError(
+      409,
+      'Hasil baru dapat diumumkan setelah masa pemungutan suara selesai, ditutup panitia, atau semua pemilih sudah memilih.',
+      'VOTING_NOT_FINISHED',
+    );
+  }
+  await prisma.electionSettings.update({
+    where: { id: 1 },
+    data: published ? { resultsWithheld: false } : { resultsWithheld: true, resultsPublishedAt: null },
+  });
+  await recordAudit({
+    action: published ? AUDIT.RESULTS_PUBLISHED : AUDIT.RESULTS_UNPUBLISHED,
+    status: 'success',
+    userId: admin.id,
+    actor: admin.nis,
+  });
+  res.json({ election: (await electionView()).election });
 });
 
 adminElectionRouter.post('/hero-photo', photoUpload, async (req, res) => {
   const admin = currentUser(req);
   const existing = await getElectionSettings();
   const heroPhotoUrl = await saveImage(req.file, 'hero');
-  const settings = await prisma.electionSettings.update({ where: { id: 1 }, data: { heroPhotoUrl } });
+  await prisma.electionSettings.update({ where: { id: 1 }, data: { heroPhotoUrl } });
   await removeUpload(existing.heroPhotoUrl);
   await recordAudit({ action: AUDIT.HERO_PHOTO_UPDATED, status: 'success', userId: admin.id, actor: admin.nis });
-  res.json({ election: serializeElection(settings) });
+  res.json({ election: (await electionView()).election });
 });
 
 adminElectionRouter.delete('/hero-photo', async (req, res) => {
   const admin = currentUser(req);
   const existing = await getElectionSettings();
-  const settings = await prisma.electionSettings.update({ where: { id: 1 }, data: { heroPhotoUrl: null } });
+  await prisma.electionSettings.update({ where: { id: 1 }, data: { heroPhotoUrl: null } });
   await removeUpload(existing.heroPhotoUrl);
   await recordAudit({
     action: AUDIT.HERO_PHOTO_UPDATED,
@@ -75,5 +118,5 @@ adminElectionRouter.delete('/hero-photo', async (req, res) => {
     actor: admin.nis,
     metadata: { removed: true },
   });
-  res.json({ election: serializeElection(settings) });
+  res.json({ election: (await electionView()).election });
 });

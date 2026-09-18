@@ -212,7 +212,7 @@ export default function ClassesPage() {
               : 'Tidak ada kelas yang cocok dengan filter.'}
           </p>
         ) : (
-          <div className="-mx-1 overflow-x-auto px-1">
+          <div className="-mx-1 table-scroll px-1">
             <table className="w-full min-w-[640px] border-collapse text-left text-sm">
               <caption className="sr-only">Daftar kelas</caption>
               <thead>
@@ -243,7 +243,7 @@ export default function ClassesPage() {
                         </div>
                       </td>
                       <td className="py-3 text-right whitespace-nowrap">
-                        <Link to={`/admin/siswa?classId=${c.id}`} className="btn h-8 px-2.5 text-[13px] text-royal hover:bg-royal-soft">
+                        <Link to={`/admin/siswa?classId=${c.id}`} className="btn h-9 px-2.5 text-[13px] text-royal hover:bg-royal-soft">
                           <Users aria-hidden className="size-3.5" /> Siswa<span className="sr-only"> kelas {c.name}</span>
                         </Link>
                         <button
@@ -252,7 +252,7 @@ export default function ClassesPage() {
                             setEditing(c);
                             setFormOpen(true);
                           }}
-                          className="btn h-8 px-2.5 text-[13px] text-royal hover:bg-royal-soft"
+                          className="btn h-9 px-2.5 text-[13px] text-royal hover:bg-royal-soft"
                         >
                           <Pencil aria-hidden className="size-3.5" /> Edit<span className="sr-only"> kelas {c.name}</span>
                         </button>
@@ -261,7 +261,7 @@ export default function ClassesPage() {
                           onClick={() => setDeleting(c)}
                           disabled={c.studentCount > 0}
                           title={c.studentCount > 0 ? 'Kelas yang masih berisi siswa tidak dapat dihapus' : undefined}
-                          className="btn h-8 px-2.5 text-[13px] text-ink-muted hover:bg-danger-bg hover:text-danger-ink"
+                          className="btn h-9 px-2.5 text-[13px] text-ink-muted hover:bg-danger-bg hover:text-danger-ink"
                         >
                           <Trash aria-hidden className="size-3.5" /> Hapus<span className="sr-only"> kelas {c.name}</span>
                         </button>

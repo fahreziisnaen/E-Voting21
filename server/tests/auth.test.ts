@@ -60,11 +60,17 @@ describe('sesi', () => {
     const { agent } = await loginAs('1001');
     const me = await agent.get('/api/auth/me');
     expect(me.status).toBe(200);
-    expect(me.body).toMatchObject({ hasVoted: false, vote: null, user: { nis: '1001' } });
+    expect(me.body).toMatchObject({ votes: [], user: { nis: '1001' } });
   });
 
-  it('tanpa login → 401', async () => {
+  it('pengunjung tanpa cookie sesi → 200 dengan user null (beranda publik)', async () => {
     const res = await request(app).get('/api/auth/me');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ user: null, votes: [] });
+  });
+
+  it('cookie sesi tidak valid → tetap 401 agar klien mencoba refresh', async () => {
+    const res = await request(app).get('/api/auth/me').set('Cookie', 'ev_access=token-palsu');
     expect(res.status).toBe(401);
   });
 

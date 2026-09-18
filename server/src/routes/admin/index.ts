@@ -7,10 +7,12 @@ import { setAuthCookies } from '../../lib/tokens.js';
 import { currentUser, requireAuth, requireRole } from '../../middleware/auth.js';
 import { AUDIT, recordAudit } from '../../services/audit.js';
 import { adminCandidatesRouter } from './candidates.js';
+import { adminCategoriesRouter } from './categories.js';
 import { adminClassesRouter } from './classes.js';
 import { adminElectionRouter } from './election.js';
+import { adminMaintenanceRouter } from './maintenance.js';
 import { adminReportsRouter } from './reports.js';
-import { adminStudentsRouter } from './students.js';
+import { createVotersRouter } from './voters.js';
 
 export const adminRouter = Router();
 
@@ -18,10 +20,13 @@ export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole('admin'));
 
 adminRouter.use('/', adminReportsRouter);
+adminRouter.use('/categories', adminCategoriesRouter);
 adminRouter.use('/candidates', adminCandidatesRouter);
-adminRouter.use('/students', adminStudentsRouter);
+adminRouter.use('/students', createVotersRouter('student'));
+adminRouter.use('/teachers', createVotersRouter('teacher'));
 adminRouter.use('/classes', adminClassesRouter);
 adminRouter.use('/election', adminElectionRouter);
+adminRouter.use('/', adminMaintenanceRouter);
 
 const passwordSchema = z
   .object({

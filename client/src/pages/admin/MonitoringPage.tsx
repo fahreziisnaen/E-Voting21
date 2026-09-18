@@ -1,7 +1,7 @@
 import { RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AdminPageHeader, ErrorNotice, Panel, selectClass } from '../../features/admin/AdminUi';
-import { HourlyParticipationChart, StatCards, visibleHours, VotesByCandidate } from '../../features/admin/Charts';
+import { CategoryVotesList, HourlyParticipationChart, StatCards, visibleHours } from '../../features/admin/Charts';
 import { useStats } from '../../hooks/admin';
 import { useElection } from '../../hooks/queries';
 import { errorMessage } from '../../lib/api';
@@ -77,12 +77,12 @@ export default function MonitoringPage() {
         <StatCards totals={stats.data?.totals} />
         <div className="grid items-start gap-[18px] xl:grid-cols-2">
           <Panel
-            title="Perolehan Suara per Kandidat"
+            title="Perolehan Suara per Kategori"
             titleId="monitoring-perolehan"
             description="Akumulasi seluruh masa pemungutan suara. Bersifat internal — jangan dipublikasikan sebelum ditutup."
           >
             {stats.data ? (
-              <VotesByCandidate candidates={stats.data.perCandidate} totalVotes={stats.data.totals.totalVotes} />
+              <CategoryVotesList categories={stats.data.categories} />
             ) : (
               <div aria-hidden className="h-48 animate-pulse rounded-card bg-line-soft" />
             )}

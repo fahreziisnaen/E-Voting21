@@ -158,6 +158,17 @@
   @apply bg-danger text-white hover:brightness-95;
 }
 
+/**
+ * Pembungkus tabel lebar yang digeser sendiri di ponsel.
+ * `contain: paint` wajib: tanpa itu Chrome/Edge tetap menambahkan lebar tabel ke area gulir
+ * halaman, sehingga seluruh halaman ikut bergeser ke samping saat disentuh di ponsel.
+ */
+@utility table-scroll {
+  overflow-x: auto;
+  contain: paint;
+  overscroll-behavior-x: contain;
+}
+
 @utility field-label {
   @apply mb-2 block text-[13px] font-bold text-ink;
 }

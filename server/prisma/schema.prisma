@@ -1,4 +1,4 @@
-// Skema database E-Voting OSIS SMAN 21.
+// Skema database E-Voting SMAN 21.
 // Koneksi diatur di prisma.config.ts (DATABASE_URL).
 
 generator client {
@@ -14,7 +14,15 @@ datasource db {
 
 enum Role {
   student
+  teacher
   admin
+}
+
+/// Siapa yang boleh memilih di sebuah kategori.
+enum VoterScope {
+  all
+  student
+  teacher
 }
 
 enum ElectionStatus {
@@ -45,32 +53,51 @@ model SchoolClass {
 
 model User {
   id           Int      @id @default(autoincrement())
+  /// NIS untuk siswa, NIP untuk guru, username untuk panitia.
   nis          String   @unique @db.VarChar(64)
   name         String   @db.VarChar(120)
-  /// Wajib untuk siswa; null untuk akun panitia.
+  /// Wajib untuk siswa; null untuk guru & panitia.
   classId      Int?     @map("class_id")
   passwordHash String   @map("password_hash") @db.VarChar(255)
   role         Role     @default(student)
-  hasVoted     Boolean  @default(false) @map("has_voted")
   /// Dinaikkan saat logout / reset kode akses untuk mencabut semua sesi aktif.
   tokenVersion Int      @default(0) @map("token_version")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  schoolClass SchoolClass? @relation(fields: [classId], references: [id], onDelete: Restrict)
-  candidacy   Candidate?
-  vote        Vote?
-  auditLogs   AuditLog[]
+  schoolClass  SchoolClass? @relation(fields: [classId], references: [id], onDelete: Restrict)
+  candidacies  Candidate[]
+  votes        Vote[]
+  auditLogs    AuditLog[]
 
-  @@index([role, hasVoted])
+  @@index([role])
   @@index([classId])
   @@map("users")
 }
 
+model Category {
+  id          Int        @id @default(autoincrement())
+  /// Contoh: "Ketua OSIS"
+  name        String     @unique @db.VarChar(80)
+  description String?    @db.VarChar(300)
+  voterScope  VoterScope @default(all) @map("voter_scope")
+  /// Urutan tampil (kecil lebih dulu).
+  sortOrder   Int        @default(0) @map("sort_order")
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  candidates Candidate[]
+  votes      Vote[]
+
+  @@index([sortOrder])
+  @@map("categories")
+}
+
 model Candidate {
   id                  Int      @id @default(autoincrement())
-  candidateNumber     Int      @unique @map("candidate_number")
-  /// Kandidat selalu siswa terdaftar; nama & kelas diambil dari data siswa.
-  userId              Int      @unique @map("user_id")
+  categoryId          Int      @map("category_id")
+  /// Unik per kategori.
+  candidateNumber     Int      @map("candidate_number")
+  /// Kandidat selalu siswa/guru terdaftar; nama & kelas diambil dari datanya.
+  userId              Int      @map("user_id")
   photoUrl            String?  @map("photo_url") @db.VarChar(255)
   vision              String   @db.Text
   /// string[]
@@ -81,39 +108,52 @@ model Candidate {
   organizationHistory Json     @map("organization_history")
   createdAt           DateTime @default(now()) @map("created_at")
 
-  user  User   @relation(fields: [userId], references: [id], onDelete: Restrict)
-  votes Vote[]
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  votes    Vote[]
 
+  @@unique([categoryId, candidateNumber])
+  @@unique([categoryId, userId])
+  @@index([userId])
   @@map("candidates")
 }
 
 model Vote {
   id          Int      @id @default(autoincrement())
-  /// UNIQUE: penjamin satu suara per siswa di level database.
-  userId      Int      @unique @map("user_id")
+  userId      Int      @map("user_id")
+  /// Disalin dari kandidat agar UNIQUE(user_id, category_id) dapat dijamin database.
+  categoryId  Int      @map("category_id")
   candidateId Int      @map("candidate_id")
-  /// Kode tanda terima yang ditampilkan ke siswa (tidak memuat pilihan).
+  /// Kode tanda terima yang ditampilkan ke pemilih (tidak memuat pilihan).
   receiptCode String   @unique @map("receipt_code") @db.VarChar(32)
   votedAt     DateTime @default(now()) @map("voted_at")
   ipAddress   String?  @map("ip_address") @db.VarChar(64)
   userAgent   String?  @map("user_agent") @db.VarChar(255)
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  category  Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Restrict)
 
+  /// Penjamin satu suara per pemilih per kategori di level database.
+  @@unique([userId, categoryId])
+  @@index([categoryId])
   @@index([candidateId])
   @@index([votedAt])
   @@map("votes")
 }
 
 model ElectionSettings {
-  id           Int            @id @default(1)
-  electionName String         @map("election_name") @db.VarChar(160)
-  startDate    DateTime       @map("start_date")
-  endDate      DateTime       @map("end_date")
-  status       ElectionStatus @default(draft)
-  heroPhotoUrl String?        @map("hero_photo_url") @db.VarChar(255)
-  updatedAt    DateTime       @updatedAt @map("updated_at")
+  id                 Int            @id @default(1)
+  electionName       String         @map("election_name") @db.VarChar(160)
+  startDate          DateTime       @map("start_date")
+  endDate            DateTime       @map("end_date")
+  status             ElectionStatus @default(draft)
+  heroPhotoUrl       String?        @map("hero_photo_url") @db.VarChar(255)
+  /// Diisi saat hasil pertama kali terbuka (otomatis atau oleh panitia); null = belum diumumkan.
+  resultsPublishedAt DateTime?      @map("results_published_at")
+  /// true = panitia menahan pengumuman meski syaratnya sudah terpenuhi.
+  resultsWithheld    Boolean        @default(false) @map("results_withheld")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
 
   @@map("election_settings")
 }
@@ -121,7 +161,7 @@ model ElectionSettings {
 model AuditLog {
   id        Int         @id @default(autoincrement())
   userId    Int?        @map("user_id")
-  /// NIS / username pada saat kejadian (tetap ada walau akun dihapus).
+  /// NIS / NIP / username pada saat kejadian (tetap ada walau akun dihapus).
   actor     String?     @db.VarChar(64)
   action    String      @db.VarChar(64)
   status    AuditStatus

@@ -9,7 +9,6 @@ export const sessionUserSelect = {
   nis: true,
   name: true,
   role: true,
-  hasVoted: true,
   tokenVersion: true,
   schoolClass: { select: { name: true } },
 } as const;
@@ -18,10 +17,9 @@ export interface SessionUser {
   id: number;
   nis: string;
   name: string;
-  /** null untuk akun panitia. */
+  /** null untuk guru & panitia. */
   className: string | null;
   role: Role;
-  hasVoted: boolean;
   tokenVersion: number;
 }
 
@@ -44,7 +42,7 @@ const SESSION_ENDED = 'Sesi Anda telah berakhir. Silakan masuk kembali.';
 
 /**
  * Memvalidasi JWT dari cookie, lalu memuat ulang user dari database — sehingga
- * `hasVoted` dan `role` selalu berasal dari server, bukan dari token/klien.
+ * `role` selalu berasal dari server, bukan dari token/klien. Status memilih dibaca dari tabel votes.
  */
 export async function requireAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
   const token: unknown = req.cookies?.[ACCESS_COOKIE];
