@@ -338,7 +338,7 @@ describe('halaman Kandidat (slide)', () => {
 
     const carousel = await screen.findByRole('region', { name: 'Profil kandidat Ketua OSIS' });
     expect(within(carousel).getByRole('heading', { level: 2, name: 'Andi Pratama' })).toBeInTheDocument();
-    expect(within(carousel).getByText('Kandidat 1 dari 2')).toBeInTheDocument();
+    expect(within(carousel).getByText(/Kandidat 1 dari 2 · Ketua OSIS/)).toBeInTheDocument();
 
     await user.click(within(carousel).getByRole('button', { name: 'Kandidat berikutnya' }));
     expect(within(carousel).getByRole('heading', { level: 2, name: 'Siti Nurhaliza' })).toBeInTheDocument();
@@ -351,6 +351,31 @@ describe('halaman Kandidat (slide)', () => {
     // Tombol jeda
     await user.click(within(carousel).getByRole('button', { name: 'Jeda slide' }));
     expect(within(carousel).getByRole('button', { name: 'Putar slide' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('slide lanjut ke kategori berikutnya setelah kandidat terakhir, lalu berputar kembali', async () => {
+    const user = userEvent.setup();
+    renderPublic(null, '/kandidat');
+    const next = async () => {
+      const carousel = await screen.findByRole('region', { name: /Profil kandidat/ });
+      await user.click(within(carousel).getByRole('button', { name: 'Kandidat berikutnya' }));
+    };
+
+    await next(); // kandidat 2 Ketua OSIS
+    expect(await screen.findByRole('heading', { level: 2, name: 'Siti Nurhaliza' })).toBeInTheDocument();
+
+    await next(); // kandidat terakhir → kategori berikutnya
+    const guru = await screen.findByRole('region', { name: 'Profil kandidat Guru Favorit' });
+    expect(within(guru).getByRole('heading', { level: 2, name: 'Dewi Lestari' })).toBeInTheDocument();
+
+    await next(); // kategori terakhir habis → kembali ke kandidat pertama kategori pertama
+    const osis = await screen.findByRole('region', { name: 'Profil kandidat Ketua OSIS' });
+    expect(within(osis).getByRole('heading', { level: 2, name: 'Andi Pratama' })).toBeInTheDocument();
+
+    // Mundur dari kandidat pertama → kandidat terakhir kategori sebelumnya.
+    await user.click(within(osis).getByRole('button', { name: 'Kandidat sebelumnya' }));
+    const kembali = await screen.findByRole('region', { name: 'Profil kandidat Guru Favorit' });
+    expect(within(kembali).getByRole('heading', { level: 2, name: 'Dewi Lestari' })).toBeInTheDocument();
   });
 
   it('tab kategori mengganti kandidat yang ditampilkan', async () => {

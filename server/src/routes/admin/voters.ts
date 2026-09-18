@@ -15,7 +15,15 @@ const COPY: Record<
   {
     id: string;
     noun: string;
-    audit: { created: AuditAction; updated: AuditAction; deleted: AuditAction; reset: AuditAction; imported: AuditAction };
+    audit: {
+      created: AuditAction;
+      updated: AuditAction;
+      deleted: AuditAction;
+      reset: AuditAction;
+      imported: AuditAction;
+      bulkUpdated: AuditAction;
+      bulkDeleted: AuditAction;
+    };
   }
 > = {
   student: {
@@ -27,6 +35,8 @@ const COPY: Record<
       deleted: AUDIT.STUDENT_DELETED,
       reset: AUDIT.STUDENT_ACCESS_CODE_RESET,
       imported: AUDIT.STUDENTS_IMPORTED,
+      bulkUpdated: AUDIT.STUDENTS_BULK_UPDATED,
+      bulkDeleted: AUDIT.STUDENTS_BULK_DELETED,
     },
   },
   teacher: {
@@ -38,6 +48,8 @@ const COPY: Record<
       deleted: AUDIT.TEACHER_DELETED,
       reset: AUDIT.TEACHER_ACCESS_CODE_RESET,
       imported: AUDIT.TEACHERS_IMPORTED,
+      bulkUpdated: AUDIT.TEACHERS_BULK_UPDATED,
+      bulkDeleted: AUDIT.TEACHERS_BULK_DELETED,
     },
   },
 };
@@ -111,6 +123,24 @@ export function createVotersRouter(role: VoterRole) {
       .max(1000, 'Maksimal 1000 baris per permintaan impor.'),
     createMissingClasses: z.boolean().default(false),
   });
+  /** Sekali kirim dibatasi agar hashing kode akses tidak membuat satu permintaan terlalu lama. */
+  const idList = z
+    .array(z.coerce.number().int().positive())
+    .min(1, `Pilih minimal satu ${copy.noun.toLowerCase()}.`)
+    .max(200, 'Maksimal 200 baris per permintaan.');
+  const bulkUpdateSchema = z
+    .object({
+      ids: idList,
+      classId: classIdField.optional(),
+      /** Kode akses baru per orang (dibuat di klien agar bisa langsung diunduh panitia). */
+      codes: z.array(z.object({ id: z.coerce.number().int().positive(), password: accessCode })).max(200).optional(),
+    })
+    .refine((data) => data.classId !== undefined || (data.codes?.length ?? 0) > 0, {
+      message: 'Tidak ada perubahan yang dipilih.',
+      path: ['classId'],
+    });
+  const bulkDeleteSchema = z.object({ ids: idList });
+
   const listQuery = z.object({
     q: z.string().trim().max(64).optional(),
     classId: z.coerce.number().int().positive().optional(),
@@ -190,6 +220,83 @@ export function createVotersRouter(role: VoterRole) {
       if (isUniqueViolation(err)) throw duplicate();
       throw err;
     }
+  });
+
+  /** Ubah massal: pindah kelas (khusus siswa) dan/atau kode akses baru. */
+  router.post('/bulk-update', async (req, res) => {
+    const admin = currentUser(req);
+    const data = bulkUpdateSchema.parse(req.body);
+    if (!isStudent && data.classId !== undefined) {
+      throw new HttpError(400, "Guru tidak terikat kelas, jadi kelas tidak dapat diubah.", "VALIDATION_ERROR", [
+        { path: "classId", message: "Guru tidak terikat kelas." },
+      ]);
+    }
+    // Kelas hanya diperiksa bila memang ikut diubah.
+    if (data.classId !== undefined) await assertClassExists(data.classId);
+
+    const ids = [...new Set(data.ids)];
+    const voters = await prisma.user.findMany({ where: { id: { in: ids }, role }, select: { id: true, nis: true } });
+    if (!voters.length) throw new HttpError(404, `Data ${copy.noun.toLowerCase()} tidak ditemukan.`, 'VOTER_NOT_FOUND');
+    const known = new Set(voters.map((voter) => voter.id));
+    const codes = (data.codes ?? []).filter((code) => known.has(code.id));
+
+    if (data.classId !== undefined) {
+      await prisma.user.updateMany({ where: { id: { in: [...known] }, role }, data: { classId: data.classId } });
+    }
+    // Kode akses di-hash paralel terbatas, lalu disimpan satu per satu (nilainya berbeda tiap orang).
+    const CONCURRENCY = 8;
+    for (let i = 0; i < codes.length; i += CONCURRENCY) {
+      const chunk = codes.slice(i, i + CONCURRENCY);
+      const hashes = await Promise.all(chunk.map((code) => hashPassword(code.password)));
+      await prisma.$transaction(
+        chunk.map((code, index) =>
+          prisma.user.update({
+            where: { id: code.id },
+            // Kode akses baru → cabut semua sesi akun tersebut.
+            data: { passwordHash: hashes[index]!, tokenVersion: { increment: 1 } },
+          }),
+        ),
+      );
+    }
+
+    await recordAudit({
+      action: codes.length ? copy.audit.reset : copy.audit.bulkUpdated,
+      status: 'success',
+      userId: admin.id,
+      actor: admin.nis,
+      metadata: {
+        bulk: true,
+        updated: known.size,
+        accessCodesReset: codes.length,
+        classChanged: data.classId !== undefined ? known.size : 0,
+      },
+    });
+    res.json({ updated: known.size, accessCodesReset: codes.length, classChanged: data.classId !== undefined ? known.size : 0 });
+  });
+
+  /** Hapus massal: yang sudah memilih atau menjadi kandidat dilewati beserta alasannya. */
+  router.post('/bulk-delete', async (req, res) => {
+    const admin = currentUser(req);
+    const { ids } = bulkDeleteSchema.parse(req.body);
+    const voters = await prisma.user.findMany({ where: { id: { in: [...new Set(ids)] }, role }, select: voterSelect });
+
+    const removable: number[] = [];
+    const skipped: Array<{ nis: string; name: string; reason: 'sudah_memilih' | 'kandidat' }> = [];
+    for (const voter of voters) {
+      if (voter._count.votes > 0) skipped.push({ nis: voter.nis, name: voter.name, reason: 'sudah_memilih' });
+      else if (voter.candidacies.length > 0) skipped.push({ nis: voter.nis, name: voter.name, reason: 'kandidat' });
+      else removable.push(voter.id);
+    }
+    if (removable.length) await prisma.user.deleteMany({ where: { id: { in: removable }, role } });
+
+    await recordAudit({
+      action: copy.audit.bulkDeleted,
+      status: 'success',
+      userId: admin.id,
+      actor: admin.nis,
+      metadata: { deleted: removable.length, skipped: skipped.length },
+    });
+    res.json({ deleted: removable.length, skipped });
   });
 
   router.put('/:id', async (req, res) => {

@@ -176,6 +176,15 @@ Urutan yang disarankan: **atur kategori → impor siswa & guru → cek kelas →
   (tanpa kelas). **NIP sengaja tidak dipakai** karena bersifat rahasia: panitia membuatkan username login (mis.
   `guru.budi`) beserta kode aksesnya, dan berkas impor dengan kolom `nip` ditolak. Kolom status menampilkan berapa
   kategori yang sudah dipilih dari yang menjadi haknya.
+- **Aksi massal (siswa & guru)** — centang baris yang diinginkan, atau kotak di kepala tabel untuk memilih seluruh baris
+  di halaman itu. Muncul dua tombol:
+  - *Ubah Massal* — pindah kelas dan/atau ganti kode akses sekaligus (**untuk guru hanya kode akses**, karena guru tidak
+    terikat kelas). Kode baru bisa dibuat acak berbeda tiap orang — daftarnya diunduh sebagai CSV setelah disimpan — atau satu
+    kode yang sama untuk semua. Mengganti kode otomatis mengeluarkan pemilih tersebut dari semua perangkat.
+  - *Hapus Terpilih* — menghapus yang bisa dihapus dan **melewati** pemilih yang sudah memilih atau terdaftar sebagai kandidat,
+    lalu melaporkan siapa saja yang dilewati beserta alasannya.
+
+  Pilihan berlaku untuk halaman yang sedang tampil dan dikosongkan saat filter atau halaman berganti. Data dikirim per 100 baris.
 - **Kelas** — *Data Kelas*: tambah, ganti nama, atur tingkat (X/XI/XII/Lainnya), dan lihat partisipasi per kelas.
   Mengganti nama kelas otomatis berlaku untuk semua siswanya. Kelas yang masih berisi siswa tidak bisa dihapus.
   Saat impor, kelas yang belum ada bisa dibuat otomatis dan tingkatnya dikenali dari nama (`XII IPA 1` → XII).

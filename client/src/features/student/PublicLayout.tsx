@@ -7,7 +7,7 @@ import { useToast } from '../../components/Toast';
 import { meQuery, useCastVote, useCategories, useElection, useLogout, useMe } from '../../hooks/queries';
 import { ApiError, errorMessage } from '../../lib/api';
 import { PHASE_INFO } from '../../lib/election';
-import { canVoteIn, VOTER_SCOPE_LABEL } from '../../lib/voting';
+import { canVoteIn, VOTER_SCOPE_SENTENCE } from '../../lib/voting';
 import type { Candidate, MeResponse } from '../../types';
 import { CandidateDetailModal, ConfirmVoteModal } from './CandidateModals';
 import { SiteFooter } from './SiteFooter';
@@ -97,7 +97,7 @@ export function PublicLayout() {
       return;
     }
     if (category && !canVoteIn(me.user.role, category.voterScope)) {
-      toast(`Kategori ${category.name} hanya untuk ${VOTER_SCOPE_LABEL[category.voterScope].replace('Khusus ', '')}.`, 'error');
+      toast(`Kategori ${category.name} hanya untuk ${VOTER_SCOPE_SENTENCE[category.voterScope]}.`, 'error');
       return;
     }
     if (votedCategoryIds.has(candidate.categoryId)) {

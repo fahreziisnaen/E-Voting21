@@ -10,7 +10,9 @@ import {
   LoaderCircle,
   Pencil,
   Plus,
+  SquarePen,
   Trash,
+  X,
 } from 'lucide-react';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
@@ -652,6 +654,322 @@ function ImportModal({ role, open, onClose }: { role: VoterRole; open: boolean; 
   );
 }
 
+/** Satu permintaan maksimal 200 baris di server; dikirim per 100 agar tiap permintaan cepat selesai. */
+const BULK_CHUNK = 100;
+
+interface BulkResult {
+  updated: number;
+  accessCodesReset: number;
+  classChanged: number;
+}
+
+type CodeMode = 'none' | 'random' | 'same';
+
+/** Ubah massal: pindah kelas (khusus siswa) dan/atau kode akses baru. */
+function BulkEditModal({ role, voters: picked, open, onClose }: { role: VoterRole; voters: Voter[]; open: boolean; onClose: () => void }) {
+  const copy = COPY[role];
+  // Dibekukan saat dialog dibuka: daftar di halaman bisa berubah setelah data dimuat ulang.
+  const [voters, setVoters] = useState<Voter[]>([]);
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const classes = useClasses();
+  const [classId, setClassId] = useState<number | ''>('');
+  const [codeMode, setCodeMode] = useState<CodeMode>('none');
+  const [sharedCode, setSharedCode] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [done, setDone] = useState<{ result: BulkResult; codes: Array<{ voter: Voter; password: string }>; downloaded: boolean } | null>(null);
+  const [lastOpen, setLastOpen] = useState(false);
+
+  if (open !== lastOpen) {
+    setLastOpen(open);
+    if (open) {
+      setVoters(picked);
+      setClassId('');
+      setCodeMode('none');
+      setSharedCode('');
+      setProgress(0);
+      setDone(null);
+    }
+  }
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const codes =
+        codeMode === 'none'
+          ? []
+          : voters.map((voter) => ({ voter, password: codeMode === 'random' ? randomAccessCode() : sharedCode }));
+      const total: BulkResult = { updated: 0, accessCodesReset: 0, classChanged: 0 };
+      setProgress(0);
+      for (let i = 0; i < voters.length; i += BULK_CHUNK) {
+        const chunk = voters.slice(i, i + BULK_CHUNK);
+        const ids = chunk.map((voter) => voter.id);
+        const result = await api<BulkResult>(`${VOTER_ENDPOINT[role]}/bulk-update`, {
+          method: 'POST',
+          body: {
+            ids,
+            ...(copy.withClass && classId !== '' ? { classId } : {}),
+            ...(codes.length ? { codes: codes.filter((c) => ids.includes(c.voter.id)).map((c) => ({ id: c.voter.id, password: c.password })) } : {}),
+          },
+        });
+        total.updated += result.updated;
+        total.accessCodesReset += result.accessCodesReset;
+        total.classChanged += result.classChanged;
+        setProgress(i + chunk.length);
+      }
+      return { total, codes };
+    },
+    onSuccess: ({ total, codes }) => {
+      invalidateVoters(queryClient, copy);
+      setDone({ result: total, codes, downloaded: false });
+      if (!codes.length) {
+        toast(`${formatNumber(total.updated)} data ${copy.noun} diperbarui.`, 'success');
+        onClose();
+      }
+    },
+  });
+
+  function downloadCodes() {
+    if (!done?.codes.length) return;
+    const header = copy.withClass ? [copy.id, 'Nama', 'Kelas', 'Kode Akses'] : [copy.id, 'Nama', 'Kode Akses'];
+    const rows = done.codes.map(({ voter, password }) =>
+      copy.withClass ? [voter.nis, voter.name, voter.className ?? '', password] : [voter.nis, voter.name, password],
+    );
+    downloadText(`kode-akses-${copy.noun}-${wibDateKey(new Date())}.csv`, toCsv([header, ...rows]));
+    setDone({ ...done, downloaded: true });
+  }
+
+  const nothingSelected = (!copy.withClass || classId === '') && codeMode === 'none';
+  const sharedTooShort = codeMode === 'same' && sharedCode.trim().length < 6;
+  const mustDownload = Boolean(done?.codes.length) && !done?.downloaded;
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      dismissible={!save.isPending && !mustDownload}
+      labelledBy="ubah-massal-judul"
+      panelClassName="max-w-[520px]"
+    >
+      <div className="p-6 sm:p-7">
+        <h2 id="ubah-massal-judul" className="text-xl font-extrabold">
+          Ubah {formatNumber(voters.length)} {copy.noun} Terpilih
+        </h2>
+
+        {done ? (
+          <>
+            <p className="mt-3 flex items-center gap-2 text-sm font-bold text-success-ink" role="status">
+              <CircleCheck aria-hidden className="size-5" /> Perubahan tersimpan
+            </p>
+            <ul className="mt-2 space-y-1 text-sm text-ink-body">
+              {done.result.classChanged > 0 && <li>{formatNumber(done.result.classChanged)} pindah kelas</li>}
+              {done.result.accessCodesReset > 0 && <li>{formatNumber(done.result.accessCodesReset)} kode akses diganti</li>}
+            </ul>
+            {done.codes.length > 0 && (
+              <div className="mt-4 rounded-card border border-line bg-canvas p-4">
+                <p className="flex items-start gap-2 text-[13px] leading-normal text-ink-body">
+                  <KeyRound aria-hidden className="mt-0.5 size-4 shrink-0 text-royal" />
+                  <span>
+                    Unduh kode akses baru sekarang untuk dibagikan. Kode disimpan ter-hash, jadi{' '}
+                    <strong>tidak dapat ditampilkan lagi</strong> setelah jendela ini ditutup. Semua sesi {copy.noun} tersebut sudah
+                    dikeluarkan.
+                  </span>
+                </p>
+                <button type="button" onClick={downloadCodes} className="btn btn-primary mt-3 h-10">
+                  <Download aria-hidden className="size-4" /> Unduh kode akses (CSV)
+                </button>
+                {done.downloaded && <p className="mt-2 text-[13px] font-semibold text-success-ink">Berkas sudah diunduh.</p>}
+              </div>
+            )}
+            <div className="mt-6 flex justify-end">
+              <button type="button" onClick={onClose} className={cn('btn h-11', mustDownload ? 'text-danger-ink hover:bg-danger-bg' : 'btn-outline')}>
+                {mustDownload ? 'Tutup tanpa mengunduh' : 'Tutup'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mt-1.5 text-[13px] text-ink-muted">
+              Hanya bagian yang Anda pilih di bawah yang diubah; sisanya dibiarkan apa adanya.
+            </p>
+
+            {copy.withClass && (
+              <div className="mt-5">
+                <label htmlFor="massal-kelas" className="field-label">
+                  Pindahkan ke kelas
+                </label>
+                <ClassSelect
+                  id="massal-kelas"
+                  classes={classes.data}
+                  value={classId}
+                  onChange={setClassId}
+                  placeholder="Tidak diubah"
+                  className="field-input h-11 text-sm"
+                />
+              </div>
+            )}
+
+            <fieldset className="mt-5">
+              <legend className="field-label">Kode akses</legend>
+              <div className="mt-1 grid gap-2">
+                {[
+                  { value: 'none' as const, label: 'Tidak diubah', hint: `${copy.noun} tetap memakai kode akses lama.` },
+                  { value: 'random' as const, label: 'Buat kode acak berbeda tiap orang', hint: 'Paling aman; unduh daftarnya setelah disimpan.' },
+                  { value: 'same' as const, label: 'Satu kode yang sama untuk semua', hint: 'Praktis untuk kelas yang dibagikan langsung.' },
+                ].map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex cursor-pointer items-start gap-2.5 rounded-control border border-line px-3.5 py-2.5 text-sm has-[:checked]:border-royal has-[:checked]:bg-royal-soft"
+                  >
+                    <input
+                      type="radio"
+                      name="massal-kode"
+                      value={option.value}
+                      checked={codeMode === option.value}
+                      onChange={() => setCodeMode(option.value)}
+                      className="mt-0.5 size-4 accent-royal"
+                    />
+                    <span>
+                      <span className="block font-bold">{option.label}</span>
+                      <span className="block text-xs text-ink-muted">{option.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {codeMode === 'same' && (
+                <div className="mt-2.5 flex gap-2">
+                  <input
+                    aria-label="Kode akses baru untuk semua"
+                    value={sharedCode}
+                    onChange={(e) => setSharedCode(e.target.value)}
+                    autoComplete="off"
+                    className="field-input h-11 font-mono text-sm"
+                  />
+                  <button type="button" onClick={() => setSharedCode(randomAccessCode())} className="btn btn-outline h-11 shrink-0 px-3 text-[13px]">
+                    Buat acak
+                  </button>
+                </div>
+              )}
+              {sharedTooShort && <p className="field-error">Kode akses minimal 6 karakter.</p>}
+            </fieldset>
+
+            {save.isError && (
+              <div className="mt-4">
+                <ErrorNotice message={errorMessage(save.error)} />
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
+              <button type="button" onClick={onClose} disabled={save.isPending} className="btn btn-outline h-11">
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => save.mutate()}
+                disabled={save.isPending || nothingSelected || sharedTooShort}
+                className="btn btn-primary h-11 sm:min-w-40"
+              >
+                {save.isPending && <LoaderCircle aria-hidden className="size-4 animate-spin" />}
+                {save.isPending ? `Menyimpan… ${formatNumber(progress)}/${formatNumber(voters.length)}` : 'Simpan Perubahan'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+const SKIP_REASON: Record<string, string> = { sudah_memilih: 'sudah memilih', kandidat: 'terdaftar sebagai kandidat' };
+
+/** Hapus massal; pemilih yang sudah memilih atau menjadi kandidat otomatis dilewati. */
+function BulkDeleteModal({ role, voters: picked, open, onClose }: { role: VoterRole; voters: Voter[]; open: boolean; onClose: () => void }) {
+  const copy = COPY[role];
+  const [voters, setVoters] = useState<Voter[]>([]);
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [result, setResult] = useState<{ deleted: number; skipped: Array<{ nis: string; name: string; reason: string }> } | null>(null);
+  const [lastOpen, setLastOpen] = useState(false);
+
+  if (open !== lastOpen) {
+    setLastOpen(open);
+    if (open) {
+      setVoters(picked);
+      setResult(null);
+    }
+  }
+
+  const remove = useMutation({
+    mutationFn: async () => {
+      const total = { deleted: 0, skipped: [] as Array<{ nis: string; name: string; reason: string }> };
+      for (let i = 0; i < voters.length; i += BULK_CHUNK) {
+        const chunk = voters.slice(i, i + BULK_CHUNK);
+        const res = await api<typeof total>(`${VOTER_ENDPOINT[role]}/bulk-delete`, {
+          method: 'POST',
+          body: { ids: chunk.map((voter) => voter.id) },
+        });
+        total.deleted += res.deleted;
+        total.skipped.push(...res.skipped);
+      }
+      return total;
+    },
+    onSuccess: (total) => {
+      invalidateVoters(queryClient, copy);
+      if (total.skipped.length === 0) {
+        toast(`${formatNumber(total.deleted)} data ${copy.noun} dihapus.`, 'success');
+        onClose();
+        return;
+      }
+      setResult(total);
+    },
+    onError: (err) => toast(errorMessage(err), 'error'),
+  });
+
+  return (
+    <Modal open={open} onClose={onClose} dismissible={!remove.isPending} role="alertdialog" labelledBy="hapus-massal-judul" panelClassName="max-w-[480px] p-6">
+      <h2 id="hapus-massal-judul" className="flex items-center gap-2 text-lg font-extrabold">
+        <CircleAlert aria-hidden className="size-5 text-danger" /> Hapus {formatNumber(voters.length)} data {copy.noun}?
+      </h2>
+
+      {result ? (
+        <>
+          <p className="mt-2.5 text-sm text-ink-body">
+            {formatNumber(result.deleted)} data dihapus. {formatNumber(result.skipped.length)} dilewati agar rekap suara tetap valid:
+          </p>
+          <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-control border border-line bg-canvas px-3.5 py-2.5 text-[13px]">
+            {result.skipped.map((item) => (
+              <li key={item.nis}>
+                <span className="font-semibold">{item.name}</span> <span className="text-ink-muted">({item.nis})</span> —{' '}
+                {SKIP_REASON[item.reason] ?? item.reason}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-5 flex justify-end">
+            <button type="button" onClick={onClose} className="btn btn-outline h-10">
+              Tutup
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="mt-2 text-sm text-ink-body">
+            Data yang dipilih akan dihapus dan tidak dapat lagi masuk untuk memilih. {copy.noun} yang sudah memilih atau terdaftar
+            sebagai kandidat otomatis dilewati.
+          </p>
+          <div className="mt-5 flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
+            <button type="button" onClick={onClose} disabled={remove.isPending} className="btn btn-outline h-10">
+              Batal
+            </button>
+            <button type="button" onClick={() => remove.mutate()} disabled={remove.isPending} className="btn btn-danger h-10">
+              {remove.isPending && <LoaderCircle aria-hidden className="size-4 animate-spin" />}
+              {remove.isPending ? 'Menghapus…' : 'Hapus Terpilih'}
+            </button>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+
 /** Halaman panitia untuk mengelola pemilih: dipakai oleh Data Siswa dan Data Guru. */
 export function VotersPage({ role }: { role: VoterRole }) {
   const copy = COPY[role];
@@ -675,6 +993,15 @@ export function VotersPage({ role }: { role: VoterRole }) {
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [deleting, setDeleting] = useState<Voter | null>(null);
+  /** Pilihan massal berlaku untuk baris yang sedang tampil; berganti filter/halaman mengosongkannya. */
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  const rows = voters.data?.voters ?? [];
+  const selected = rows.filter((voter) => selectedIds.includes(voter.id));
+  const allSelected = rows.length > 0 && selected.length === rows.length;
+  const toggle = (id: number) => setSelectedIds((ids) => (ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]));
 
   const remove = useMutation({
     mutationFn: (id: number) => api(`${VOTER_ENDPOINT[role]}/${id}`, { method: 'DELETE' }),
@@ -686,7 +1013,10 @@ export function VotersPage({ role }: { role: VoterRole }) {
     onError: (err) => toast(errorMessage(err), 'error'),
   });
 
-  const update = (patch: Partial<VoterFilters>) => setFilters((f) => ({ ...f, ...patch, page: patch.page ?? 1 }));
+  const update = (patch: Partial<VoterFilters>) => {
+    setSelectedIds([]);
+    setFilters((f) => ({ ...f, ...patch, page: patch.page ?? 1 }));
+  };
   const label = copy.title.replace('Data ', '');
 
   return (
@@ -795,12 +1125,52 @@ export function VotersPage({ role }: { role: VoterRole }) {
           <p className="py-8 text-center text-sm text-ink-muted">Tidak ada {copy.noun} yang cocok dengan filter.</p>
         ) : (
           <>
+            {selected.length > 0 && (
+              <div
+                role="group"
+                aria-label="Aksi massal"
+                className="mb-3 flex flex-wrap items-center gap-2.5 rounded-control border border-royal/30 bg-royal-soft px-3.5 py-2.5"
+              >
+                <span className="text-[13px] font-extrabold text-navy">
+                  {formatNumber(selected.length)} {copy.noun} dipilih
+                </span>
+                <button type="button" onClick={() => setBulkEditOpen(true)} className="btn btn-outline h-9 px-3 text-[13px]">
+                  <SquarePen aria-hidden className="size-3.5" /> Ubah Massal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  className="btn h-9 border border-danger-line bg-white px-3 text-[13px] text-danger-ink hover:bg-danger-bg"
+                >
+                  <Trash aria-hidden className="size-3.5" /> Hapus Terpilih
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  className="btn h-9 px-2 text-[13px] text-ink-muted hover:text-ink sm:ml-auto"
+                >
+                  <X aria-hidden className="size-3.5" /> Batal pilih
+                </button>
+              </div>
+            )}
             <TableSwipeHint />
             <div className="-mx-1 table-scroll px-1">
               <table className="w-full min-w-[720px] border-collapse text-left text-sm">
                 <caption className="sr-only">Daftar {copy.noun}</caption>
                 <thead>
                   <tr className="border-b border-line-soft text-[11px] tracking-[0.06em] text-ink-muted uppercase">
+                    <th scope="col" className="w-10 pb-2.5">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={(node) => {
+                          if (node) node.indeterminate = selected.length > 0 && !allSelected;
+                        }}
+                        onChange={() => setSelectedIds(allSelected ? [] : rows.map((voter) => voter.id))}
+                        aria-label={allSelected ? 'Batalkan pilihan semua baris' : 'Pilih semua baris di halaman ini'}
+                        className="size-4 accent-royal"
+                      />
+                    </th>
                     <th scope="col" className="pb-2.5 font-extrabold">
                       {copy.id}
                     </th>
@@ -821,8 +1191,17 @@ export function VotersPage({ role }: { role: VoterRole }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {voters.data.voters.map((voter) => (
-                    <tr key={voter.id} className="border-b border-canvas last:border-0">
+                  {rows.map((voter) => (
+                    <tr key={voter.id} className={cn('border-b border-canvas last:border-0', selectedIds.includes(voter.id) && 'bg-royal-soft/60')}>
+                      <td className="py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(voter.id)}
+                          onChange={() => toggle(voter.id)}
+                          aria-label={`Pilih ${voter.name}`}
+                          className="size-4 accent-royal"
+                        />
+                      </td>
                       <td className="py-3 pr-3 font-mono text-[13px]">{voter.nis}</td>
                       <td className="py-3 pr-3 font-semibold">
                         {voter.name}
@@ -891,6 +1270,25 @@ export function VotersPage({ role }: { role: VoterRole }) {
           </>
         )}
       </Panel>
+
+      <BulkEditModal
+        role={role}
+        voters={selected}
+        open={bulkEditOpen}
+        onClose={() => {
+          setBulkEditOpen(false);
+          setSelectedIds([]);
+        }}
+      />
+      <BulkDeleteModal
+        role={role}
+        voters={selected}
+        open={bulkDeleteOpen}
+        onClose={() => {
+          setBulkDeleteOpen(false);
+          setSelectedIds([]);
+        }}
+      />
 
       <VoterFormModal role={role} voter={editing} open={formOpen} onClose={() => setFormOpen(false)} />
       <ImportModal role={role} open={importOpen} onClose={() => setImportOpen(false)} />

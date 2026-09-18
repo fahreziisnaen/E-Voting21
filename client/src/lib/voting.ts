@@ -1,9 +1,17 @@
 import type { Category, Role, VoterRole, VoterScope } from '../types';
 
+/** Label singkat (badge/kolom tabel). Peran ditulis kapital karena berdiri sendiri. */
 export const VOTER_SCOPE_LABEL: Record<VoterScope, string> = {
-  all: 'Siswa & guru',
-  student: 'Khusus siswa',
-  teacher: 'Khusus guru',
+  all: 'Siswa & Guru',
+  student: 'Khusus Siswa',
+  teacher: 'Khusus Guru',
+};
+
+/** Bentuk untuk di dalam kalimat: "Kategori X hanya untuk siswa." */
+export const VOTER_SCOPE_SENTENCE: Record<VoterScope, string> = {
+  all: 'siswa dan guru',
+  student: 'siswa',
+  teacher: 'guru',
 };
 
 export const ROLE_LABEL: Record<Role, string> = {

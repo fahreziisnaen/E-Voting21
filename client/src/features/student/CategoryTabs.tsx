@@ -1,4 +1,5 @@
 import { CircleCheck } from 'lucide-react';
+import { useCallback } from 'react';
 import { useSearchParams } from 'react-router';
 import { cn } from '../../lib/cn';
 import { canVoteIn, VOTER_SCOPE_LABEL } from '../../lib/voting';
@@ -10,15 +11,18 @@ export function useSelectedCategory(categories: Category[] | undefined) {
   const requested = Number(searchParams.get('kategori'));
   const selected = categories?.find((c) => c.id === requested) ?? categories?.[0];
 
-  function select(categoryId: number) {
-    setSearchParams(
-      (params) => {
-        params.set('kategori', String(categoryId));
-        return params;
-      },
-      { replace: true, preventScrollReset: true },
-    );
-  }
+  const select = useCallback(
+    (categoryId: number) => {
+      setSearchParams(
+        (params) => {
+          params.set('kategori', String(categoryId));
+          return params;
+        },
+        { replace: true, preventScrollReset: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   return [selected, select] as const;
 }

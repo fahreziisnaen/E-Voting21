@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Clock, LogIn, Pause, Play, RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { Link, useLocation } from 'react-router';
 import { CandidateBadge, CandidatePhoto } from '../components/CandidateVisuals';
 import type { LoginRedirectState } from '../components/RouteGuards';
@@ -147,6 +147,8 @@ export function CandidatesShowcasePage() {
   const location = useLocation();
   const [category, selectCategory] = useSelectedCategory(categories.data);
   const list = category?.candidates ?? [];
+  // Kategori kosong dilewati: slide berpindah antar kategori yang punya kandidat.
+  const filledCategories = useMemo(() => (categories.data ?? []).filter((c) => c.candidates.length > 0), [categories.data]);
   const count = list.length;
   const isGuest = !meLoading && !me;
 
@@ -159,10 +161,13 @@ export function CandidatesShowcasePage() {
   const elapsed = useRef(0);
   const progressRef = useRef<HTMLDivElement>(null);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  /** Kandidat yang dituju setelah kategori berganti (dipakai saat slide mundur ke kategori sebelumnya). */
+  const pendingIndex = useRef<number | null>(null);
 
   const current = count ? Math.min(index, count - 1) : 0;
   const active = list[current];
-  const paused = !playing || hovered || keyboardFocus || tabHidden || dialogOpen || count < 2;
+  const single = count < 2 && filledCategories.length < 2;
+  const paused = !playing || hovered || keyboardFocus || tabHidden || dialogOpen || single;
 
   // Kembali dari login lewat "Pilih Kandidat Ini": tampilkan kandidat yang sedang dikonfirmasi.
   const returningPickId = useRef((location.state as { pickCandidateId?: number } | null)?.pickCandidateId);
@@ -172,15 +177,27 @@ export function CandidatesShowcasePage() {
       if (!count) return;
       elapsed.current = 0;
       setDirection(dir);
+
+      // Melewati kandidat terakhir/pertama → lanjut ke kategori berikutnya/sebelumnya,
+      // dan baru kembali ke kandidat pertama kategori pertama setelah kategori terakhir.
+      const position = filledCategories.findIndex((c) => c.id === category?.id);
+      if ((target >= count || target < 0) && filledCategories.length > 1 && position >= 0) {
+        const step = target >= count ? 1 : -1;
+        const nextCategory = filledCategories[(position + step + filledCategories.length) % filledCategories.length]!;
+        pendingIndex.current = step === 1 ? 0 : nextCategory.candidates.length - 1;
+        selectCategory(nextCategory.id);
+        return;
+      }
       setIndex(((target % count) + count) % count);
     },
-    [count],
+    [count, filledCategories, category?.id, selectCategory],
   );
 
-  // Ganti kategori → mulai dari kandidat pertama.
+  // Ganti kategori → mulai dari kandidat pertama (atau kandidat terakhir bila datang dari arah mundur).
   useEffect(() => {
     elapsed.current = 0;
-    setIndex(0);
+    setIndex(pendingIndex.current ?? 0);
+    pendingIndex.current = null;
   }, [category?.id]);
 
   useEffect(() => {
@@ -374,7 +391,7 @@ export function CandidatesShowcasePage() {
               </div>
             </div>
 
-            {count > 1 && (
+            {!single && (
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
@@ -403,6 +420,7 @@ export function CandidatesShowcasePage() {
                 </button>
                 <p className="text-[13px] text-ink-muted sm:ml-auto" aria-live="polite">
                   Kandidat {current + 1} dari {count}
+                  {filledCategories.length > 1 && category ? ` · ${category.name}` : ''}
                   {playing && paused && !tabHidden ? ' · berhenti sementara' : ''}
                 </p>
               </div>
